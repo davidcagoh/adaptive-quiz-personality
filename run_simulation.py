@@ -8,7 +8,7 @@ from synthetic_user import SyntheticUser
 from adaptive_question_selector import generate_question_weights, select_next_question 
 from bayesian_update import bayesian_update
 
-def run_simulation(d=4, T=30, seed=1):
+def run_simulation(d=4, T=30, seed=42):
     rng = np.random.RandomState(seed)
 
     # Initialize synthetic user

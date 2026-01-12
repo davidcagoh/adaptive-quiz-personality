@@ -4,7 +4,7 @@ class SyntheticUser:
     """
     Synthetic user with latent traits and response simulation.
     """
-    def __init__(self, d, seed=42):
+    def __init__(self, d, seed=2):
         self.d = d
         self.rng = np.random.RandomState(seed)
         # True latent traits in [-1,1]
