@@ -24,18 +24,31 @@ This serves as a **proof-of-concept for adaptive testing**, showing how an “Ad
   - `run_simulation.py` → Orchestrates the simulation and renders the animation
 
 - **Adaptive Question Selection**
-  - Chooses the next question to maximize projected variance reduction
+  - **Variance heuristic** (default): Chooses question to maximize projected variance reduction
+  - **Expected information gain**: Advanced mode using mutual information for optimal selection
   - Avoids repeating previously asked questions
+  - Backward compatible: variance mode is default
 
 - **Visualization**
-  - Dynamic scatter point representing current latent estimate
-  - Uncertainty ellipse showing covariance
-  - Decaying path to illustrate the trajectory of convergence
+  - **2D mode**: Dynamic scatter point with uncertainty ellipse and decaying path
+  - **Radar plot**: Multi-axis trait profile with uncertainty bands
+  - **Multi-2D**: Small multiples showing all trait pairs simultaneously
+  - Real-time metrics overlay: uncertainty trace, error from true traits
+  - Step magnitude encoded in point size
   - Color intensity indicates recency / confidence
 
 - **Synthetic Users**
-  - Supports multiple simulated profiles
-  - Can test fast, slow, confident, hesitant, or fragmented responding behavior
+  - **Base SyntheticUser**: Standard response behavior
+  - **ConfidentUser**: Fast responses, low noise, consistent answers
+  - **HesitantUser**: Slow responses, high noise, uncertain answers
+  - **FragmentedUser**: Inconsistent responses along some trait axes
+
+- **Experimental Analysis**
+  - Compare adaptive vs random question selection
+  - Per-axis posterior variance and error tracking
+  - Statistical validation: t-tests, effect sizes, convergence metrics
+  - Export results to CSV/JSON for reproducibility
+  - Comprehensive plots: trajectories, per-axis metrics, boxplots
 
 ---
 
@@ -44,7 +57,7 @@ This serves as a **proof-of-concept for adaptive testing**, showing how an “Ad
 - Python 3.8+  
 - Packages:
   ```bash
-  pip install numpy matplotlib
+  pip install numpy matplotlib scipy
   ```
 
 ---
@@ -56,8 +69,11 @@ adaptive-quiz-personality/
 │
 ├─ bayesian_update.py            # Bayesian update logic
 ├─ adaptive_question_selector.py # Question generation and adaptive selection
-├─ synthetic_user.py             # Simulated user responses
+├─ synthetic_user.py             # Simulated user responses (with archetypes)
 ├─ run_simulation.py             # Orchestrator: simulation + animation
+├─ run_experiments.py            # Experimental comparison with statistics
+├─ test_modules.py               # Unit tests for modularity verification
+├─ archive/                      # Archived prototype versions
 └─ README.md                     # This file
 ```
 
@@ -85,10 +101,18 @@ python run_simulation.py
 ```
 
 - This will simulate a synthetic user taking the adaptive quiz
-- Displays a dynamic 2D animation of the first two trait dimensions, including:
-  - Latent trait point movement
-  - Uncertainty ellipse
-  - Decaying path of past states
+- Displays a dynamic 2D animation with metrics overlay
+- Options: `mode='2d'`, `'radar'`, or `'multi_2d'` for different visualizations
+
+4. **Run experiments**
+
+```bash
+python run_experiments.py
+```
+
+- Compares adaptive vs random question selection across multiple users
+- Generates statistical analysis and saves results to `results/` directory
+- Creates comprehensive plots showing convergence and per-axis metrics
 
 ---
 
@@ -118,22 +142,24 @@ python run_simulation.py
 
 ---
 
-## Extending the System
+## Recent Updates
 
-- **Add More Traits**
-  - Increase `d` in `run_simulation.py`
-  - Update visualization to handle multiple axes (radar or multiple 2D projections)
+### ✅ Implemented Features
 
-- **Advanced Adaptive Selection**
-  - Replace variance heuristic with expected information gain
-  - Implement exploration/exploitation trade-offs
+- **Expected Information Gain**: Advanced question selection using mutual information (`mode='info_gain'`)
+- **User Archetypes**: `ConfidentUser`, `HesitantUser`, `FragmentedUser` subclasses
+- **Multi-Axis Visualization**: Radar plots and small multiples for all trait pairs
+- **Metrics Overlay**: Real-time uncertainty trace and error from true traits
+- **Experimental Framework**: Statistical validation with t-tests, effect sizes, CSV/JSON export
+- **Per-Axis Tracking**: Individual trait variance and error trajectories
+- **Unit Tests**: Comprehensive test suite verifying modularity and correctness
 
-- **Multiple User Archetypes**
-  - Modify `SyntheticUser` to simulate confident, hesitant, or fragmented response patterns
-  - Compare adaptive vs random question ordering
+### 🔄 Extending the System
 
-- **Interface Integration**
-  - The current system outputs trajectory and ellipses; this can be fed into a GUI or web interface for real-time user interaction
+- **Question Pool Management**: Load questions from files/database instead of random generation
+- **Longitudinal Tracking**: Multi-session or temporal tracking across quiz attempts
+- **Exploration/Exploitation**: Add trade-off parameters for question selection
+- **Interface Integration**: Feed trajectory and ellipses into GUI or web interface for real-time interaction
 
 ---
 

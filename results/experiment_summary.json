@@ -1,0 +1,76 @@
+{
+  "statistics": {
+    "variance": {
+      "uncertainty": {
+        "t_statistic": -1.5281501262635135,
+        "p_value": 0.1429525542993242,
+        "effect_size": -0.2539606680932949,
+        "mean_adaptive": 0.10255375407598033,
+        "mean_random": 0.10512389387234448,
+        "improvement_pct": 2.4448673861768855
+      },
+      "error": {
+        "t_statistic": 0.995383515964068,
+        "p_value": 0.3320584110077359,
+        "effect_size": 0.21909924401767902,
+        "mean_adaptive": 0.20838842246379907,
+        "mean_random": 0.19251638494846107,
+        "improvement_pct": -8.244512548678461
+      },
+      "convergence": {
+        "t_statistic": -2.516611478423583,
+        "p_value": 0.020991504670164814,
+        "effect_size": -0.5773502691896258,
+        "mean_adaptive": 3.0,
+        "mean_random": 3.5,
+        "improvement_pct": 14.28571428571429
+      }
+    },
+    "info_gain": {
+      "uncertainty": {
+        "t_statistic": -1.0051969318928773,
+        "p_value": 0.32743291122102797,
+        "effect_size": -0.16062580979246346,
+        "mean_adaptive": 0.10349832409742496,
+        "mean_random": 0.10512389387234448,
+        "improvement_pct": 1.5463371028602735
+      },
+      "error": {
+        "t_statistic": -0.6894458188494832,
+        "p_value": 0.49887719248563145,
+        "effect_size": -0.17758116919860273,
+        "mean_adaptive": 0.17965200929908468,
+        "mean_random": 0.19251638494846107,
+        "improvement_pct": 6.682223776859486
+      },
+      "convergence": {
+        "t_statistic": -2.516611478423583,
+        "p_value": 0.020991504670164814,
+        "effect_size": -0.5773502691896258,
+        "mean_adaptive": 3.0,
+        "mean_random": 3.5,
+        "improvement_pct": 14.28571428571429
+      }
+    }
+  },
+  "summary_metrics": {
+    "variance": {
+      "mean_final_uncertainty": 0.10255375407598033,
+      "std_final_uncertainty": 0.010319912217329665,
+      "mean_final_error": 0.20838842246379907,
+      "std_final_error": 0.062110402578804055
+    },
+    "random": {
+      "mean_final_uncertainty": 0.10512389387234448,
+      "std_final_uncertainty": 0.010120227733138538,
+      "mean_final_error": 0.19251638494846107,
+      "std_final_error": 0.07244222857317249
+    },
+    "info_gain": {
+      "mean_final_uncertainty": 0.10349832409742496,
+      "std_final_uncertainty": 0.009505622538663884,
+      "mean_final_error": 0.17965200929908468,
+      "std_final_error": 0.06312456982261311
+    }
+  }
+}
