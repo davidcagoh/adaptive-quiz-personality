@@ -1,0 +1,41 @@
+{
+  "name": "MBTI",
+  "dimensions": [
+    {"name": "EI", "positive": "E", "negative": "I"},
+    {"name": "NS", "positive": "N", "negative": "S"},
+    {"name": "TF", "positive": "T", "negative": "F"},
+    {"name": "JP", "positive": "J", "negative": "P"}
+  ],
+  "questions": [
+    {"id": "q1", "text": "I prefer to focus on the big picture rather than details.", "weights": [0.0, 1.0, 0.0, 0.0]},
+    {"id": "q2", "text": "I am more interested in ideas than in practical applications.", "weights": [0.0, 1.0, 0.0, 0.0]},
+    {"id": "q3", "text": "I like to have a clear plan before starting a project.", "weights": [0.0, 0.0, 0.0, 1.0]},
+    {"id": "q4", "text": "I prefer to keep my options open rather than decide in advance.", "weights": [0.0, 0.0, 0.0, 1.0]},
+    {"id": "q5", "text": "I enjoy being in social gatherings and meeting new people.", "weights": [1.0, 1.0, 0.0, 0.0]},
+    {"id": "q6", "text": "I feel energized after spending time with others.", "weights": [1.0, 0.0, 0.0, 0.0]},
+    {"id": "q7", "text": "I often notice patterns and connections others miss.", "weights": [0.0, 1.0, 1.0, 0.0]},
+    {"id": "q8", "text": "I make decisions based on logic rather than feelings.", "weights": [1.0, 0.0, 1.0, 0.0]},
+    {"id": "q9", "text": "I like to imagine future possibilities.", "weights": [0.0, 1.0, 1.0, 0.0]},
+    {"id": "q10", "text": "I prefer to work in a team rather than alone.", "weights": [1.0, 0.0, 0.0, 0.0]},
+    {"id": "q11", "text": "I am drawn to abstract concepts and theories.", "weights": [1.0, 1.0, 0.0, 0.0]},
+    {"id": "q12", "text": "I like to stick to a schedule and finish tasks on time.", "weights": [1.0, 0.0, 0.0, 1.0]},
+    {"id": "q13", "text": "I trust my intuition when making decisions.", "weights": [0.0, 1.0, 0.0, 1.0]},
+    {"id": "q14", "text": "I prefer to think out loud with others.", "weights": [0.0, 1.0, 0.0, 0.0]},
+    {"id": "q15", "text": "I recharge by spending time alone.", "weights": [1.0, 0.0, 0.0, 0.0]},
+    {"id": "q16", "text": "I am more logical than emotional in my choices.", "weights": [1.0, 0.0, 0.0, 0.0]},
+    {"id": "q17", "text": "I value harmony and consider others' feelings.", "weights": [0.0, 0.0, 1.0, 1.0]},
+    {"id": "q18", "text": "I enjoy spontaneous outings more than planned ones.", "weights": [1.0, 1.0, 0.0, 0.0]},
+    {"id": "q19", "text": "I focus on facts and what can be proven.", "weights": [0.0, 0.0, 1.0, 0.0]},
+    {"id": "q20", "text": "I prefer flexibility over structure in my daily life.", "weights": [0.0, 0.0, 0.0, 1.0]},
+    {"id": "q21", "text": "I analyze problems objectively before acting.", "weights": [1.0, 0.0, 1.0, 0.0]},
+    {"id": "q22", "text": "I prefer clear criteria when evaluating options.", "weights": [1.0, 0.0, 1.0, 0.0]},
+    {"id": "q23", "text": "I like to explore many alternatives before deciding.", "weights": [0.0, 1.0, 0.0, 1.0]},
+    {"id": "q24", "text": "I am consistent and fair in my judgments.", "weights": [1.0, 0.0, 1.0, 0.0]},
+    {"id": "q25", "text": "I take deadlines seriously and plan ahead.", "weights": [1.0, 0.0, 1.0, 0.0]},
+    {"id": "q26", "text": "I like to organize my environment and tasks.", "weights": [1.0, 0.0, 0.0, 1.0]},
+    {"id": "q27", "text": "I weigh pros and cons carefully.", "weights": [0.0, 0.0, 1.0, 1.0]},
+    {"id": "q28", "text": "I rely on evidence rather than gut feeling.", "weights": [0.0, 0.0, 1.0, 0.0]},
+    {"id": "q29", "text": "I prefer concrete information over speculation.", "weights": [0.0, 0.0, 1.0, 0.0]},
+    {"id": "q30", "text": "I see symbolism and meaning in events.", "weights": [0.0, 1.0, 1.0, 0.0]}
+  ]
+}
