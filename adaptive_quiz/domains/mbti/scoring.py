@@ -37,9 +37,11 @@ def mbti_from_posterior(mu: np.ndarray) -> Dict[str, any]:
     tf_val = float(mu[2])
     jp_val = float(mu[3])
 
-    # Map each axis: >= 0 -> first letter, < 0 -> second letter
+    # Map each axis: positive mu -> first (positive) letter per schema.
+    # Schema dimensions: EI (E+), NS (N+), TF (T+), JP (J+)
+    # mu[1] positive means user agreed with N-loading questions (big-picture, intuition)
     ei_letter = "E" if ei_val >= 0 else "I"
-    sn_letter = "S" if sn_val >= 0 else "N"
+    sn_letter = "N" if sn_val >= 0 else "S"
     tf_letter = "T" if tf_val >= 0 else "F"
     jp_letter = "J" if jp_val >= 0 else "P"
 
@@ -48,7 +50,7 @@ def mbti_from_posterior(mu: np.ndarray) -> Dict[str, any]:
     return {
         "axes": {
             "EI": ei_val,
-            "SN": sn_val,
+            "NS": sn_val,  # positive = N (Intuition), matches schema "NS" dimension
             "TF": tf_val,
             "JP": jp_val,
         },

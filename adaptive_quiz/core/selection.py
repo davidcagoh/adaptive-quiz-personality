@@ -38,6 +38,16 @@ def expected_information_gain(
     Information gain = 0.5 * log(det(Sigma_prior) / det(Sigma_post)),
     where Sigma_post is the posterior covariance after the observation.
 
+    By the matrix determinant lemma this simplifies to:
+        IG = 0.5 * log(1 + w^T Sigma w / sigma2_t)
+
+    Since log(1 + x/c) is a *strictly monotone* function of x for fixed c > 0,
+    InformationGainSelection and VarianceSelection produce *identical question
+    rankings* in this Gaussian linear model (same argmax, different scores).
+    Any measured performance difference between the two in experiments is
+    numerical noise; neither is theoretically superior to the other here.
+    The meaningful comparison is adaptive (either strategy) vs. random selection.
+
     Parameters
     ----------
     Sigma_prior : np.ndarray

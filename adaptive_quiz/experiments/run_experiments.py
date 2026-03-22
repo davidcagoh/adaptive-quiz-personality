@@ -68,10 +68,12 @@ def run_single_user_simulation(
 
     mu_traj = [engine.get_state()["mu"].copy()]
     Sigma_traj = [engine.get_state()["Sigma"].copy()]
+    questions_to_convergence = T  # default: used all questions
 
-    for _ in range(T):
+    for step in range(T):
         next_q = engine.get_next_question()
         if next_q is None:
+            questions_to_convergence = step
             break
         question_id, w_t = next_q
         y_t, r_t, _ = user.simulate_response(w_t)
@@ -81,6 +83,9 @@ def run_single_user_simulation(
         Sigma = state["Sigma"]
         mu_traj.append(mu.copy())
         Sigma_traj.append(Sigma.copy())
+        if engine.is_complete():
+            questions_to_convergence = step + 1
+            break
 
     mu_traj = np.array(mu_traj)
     Sigma_traj = np.array(Sigma_traj)
@@ -96,6 +101,7 @@ def run_single_user_simulation(
         "per_axis_error_traj": per_axis_error_traj,
         "total_error_traj": total_error_traj,
         "uncertainty_traj": uncertainty_traj,
+        "questions_to_convergence": questions_to_convergence,
     }
 
 
@@ -122,6 +128,7 @@ def run_multiple_users_comparison(
             "per_axis_error_traj": [],
             "final_per_axis_variance": [],
             "final_per_axis_error": [],
+            "questions_to_convergence": [],
         }
 
     for user_idx in range(num_users):
@@ -144,6 +151,7 @@ def run_multiple_users_comparison(
             results[mode]["per_axis_error_traj"].append(sim_result["per_axis_error_traj"])
             results[mode]["final_per_axis_variance"].append(sim_result["per_axis_variance_traj"][-1])
             results[mode]["final_per_axis_error"].append(sim_result["per_axis_error_traj"][-1])
+            results[mode]["questions_to_convergence"].append(sim_result["questions_to_convergence"])
 
     for mode in selection_modes:
         for key in results[mode]:
@@ -180,7 +188,19 @@ def compute_statistics(
             random_conv.append(below[0] if len(below) > 0 else len(traj) - 1)
         t_conv, p_conv = stats.ttest_rel(conv_steps, random_conv)
         eff_conv = (np.mean(conv_steps) - np.mean(random_conv)) / (np.std(random_conv) + 1e-10)
+        # Questions-to-convergence: the headline metric.
+        # Compares actual number of questions needed before the stopping rule fires.
+        adaptive_qtc = np.array(results[mode]["questions_to_convergence"])
+        random_qtc = np.array(results["random"]["questions_to_convergence"])
+        t_qtc, p_qtc = stats.ttest_rel(adaptive_qtc, random_qtc)
+        eff_qtc = (np.mean(adaptive_qtc) - np.mean(random_qtc)) / (np.std(random_qtc) + 1e-10)
+
         stats_dict[mode] = {
+            "questions_to_convergence": {
+                "t_statistic": float(t_qtc), "p_value": float(p_qtc), "effect_size": float(eff_qtc),
+                "mean_adaptive": float(np.mean(adaptive_qtc)), "mean_random": float(np.mean(random_qtc)),
+                "improvement_pct": float((1 - np.mean(adaptive_qtc) / (np.mean(random_qtc) + 1e-10)) * 100),
+            },
             "uncertainty": {
                 "t_statistic": float(t_unc), "p_value": float(p_unc), "effect_size": float(eff_unc),
                 "mean_adaptive": float(np.mean(adaptive_unc)), "mean_random": float(np.mean(random_unc)),
@@ -323,7 +343,13 @@ if __name__ == "__main__":
 
     print("\n=== Statistical Comparison ===")
     for mode in stats_dict:
+        qtc = stats_dict[mode]["questions_to_convergence"]
         print(f"\n{mode.upper()} vs RANDOM:")
+        print(f"  ** Questions to convergence (HEADLINE METRIC):")
+        print(f"     Adaptive avg: {qtc['mean_adaptive']:.1f} questions  |  "
+              f"Random avg: {qtc['mean_random']:.1f} questions  |  "
+              f"Reduction: {-qtc['improvement_pct']:.1f}%  |  "
+              f"p={qtc['p_value']:.4f}, d={qtc['effect_size']:.3f}")
         print(f"  Uncertainty: p={stats_dict[mode]['uncertainty']['p_value']:.4f}, "
               f"effect={stats_dict[mode]['uncertainty']['effect_size']:.3f}, "
               f"improvement={stats_dict[mode]['uncertainty']['improvement_pct']:.1f}%")

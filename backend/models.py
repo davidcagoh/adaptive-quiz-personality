@@ -13,6 +13,7 @@ class StartQuizResponse(BaseModel):
     session_id: str
     question_id: str
     prompt: str
+    max_questions: int
 
 
 class AnswerRequest(BaseModel):
@@ -24,8 +25,10 @@ class AnswerResponse(BaseModel):
     question_id: Optional[str] = None
     prompt: Optional[str] = None
     complete: bool
+    questions_asked: int = 0
 
 
 class ResultResponse(BaseModel):
     type: str
     dimensions: Dict[str, float]
+    questions_asked: int

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adaptive MBTI Quiz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      color: #1a1a2e;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 580px;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── Welcome ─────────────────────────────────────── */
+    .welcome-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .welcome-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .welcome-subtitle { color: #555; line-height: 1.6; margin-bottom: 0.75rem; }
+    .welcome-note {
+      font-size: 0.85rem;
+      color: #888;
+      background: #f8f9ff;
+      border-left: 3px solid #4f46e5;
+      padding: 0.6rem 0.9rem;
+      border-radius: 4px;
+      margin-bottom: 1.75rem;
+    }
+
+    /* ── Button ──────────────────────────────────────── */
+    .btn-primary {
+      display: inline-block;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      width: 100%;
+    }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+    .btn-secondary {
+      display: inline-block;
+      background: transparent;
+      color: #4f46e5;
+      border: 2px solid #4f46e5;
+      border-radius: 10px;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      width: 100%;
+      margin-top: 1rem;
+    }
+    .btn-secondary:hover { background: #f0f0ff; }
+
+    /* ── Progress ────────────────────────────────────── */
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: #888;
+    }
+    .progress-bar {
+      height: 6px;
+      background: #e8eaf0;
+      border-radius: 99px;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #4f46e5;
+      border-radius: 99px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+
+    /* ── Question ────────────────────────────────────── */
+    .question-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #4f46e5;
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+    .question-text {
+      font-size: 1.25rem;
+      font-weight: 600;
+      line-height: 1.5;
+      margin-bottom: 2rem;
+      min-height: 3.5rem;
+    }
+
+    /* ── Likert ──────────────────────────────────────── */
+    .likert-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .likert-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.75rem 0.25rem;
+      border: 2px solid #e0e3ee;
+      border-radius: 12px;
+      background: #fafbff;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: #555;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .likert-btn .dot {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid #c0c5dc;
+      background: #fff;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .likert-btn:hover { border-color: #4f46e5; background: #f0f0ff; }
+    .likert-btn:hover .dot { border-color: #4f46e5; }
+    .likert-btn:active { transform: scale(0.96); }
+    .likert-btn.selected { border-color: #4f46e5; background: #eef2ff; color: #3730a3; }
+    .likert-btn.selected .dot { background: #4f46e5; border-color: #4f46e5; }
+    .likert-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .likert-poles {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #aaa;
+      padding: 0 0.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    /* ── Result ──────────────────────────────────────── */
+    .result-header { text-align: center; margin-bottom: 1.75rem; }
+    .type-badge {
+      display: inline-block;
+      background: #4f46e5;
+      color: #fff;
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      padding: 0.5rem 1.5rem;
+      border-radius: 14px;
+      margin-bottom: 0.75rem;
+    }
+    .type-description { color: #555; font-size: 0.95rem; line-height: 1.6; }
+    .questions-taken {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+      background: #ecfdf5;
+      color: #065f46;
+      border-radius: 99px;
+      padding: 0.2rem 0.75rem;
+      font-weight: 600;
+    }
+
+    .dimensions { margin-bottom: 1.5rem; }
+    .dim-row { margin-bottom: 1.1rem; }
+    .dim-poles {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 0.25rem;
+    }
+    .dim-poles span.active { color: #4f46e5; }
+    .dim-track {
+      height: 8px;
+      background: #e8eaf0;
+      border-radius: 99px;
+      position: relative;
+      overflow: hidden;
+    }
+    .dim-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: #4f46e5;
+      transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .dim-marker {
+      position: absolute;
+      top: -2px;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #4f46e5;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px #4f46e5;
+      transform: translateX(-50%);
+      transition: left 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    /* ── Loading spinner ─────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(79,70,229,0.2);
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.4rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      background: #fef2f2;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    @media (max-width: 400px) {
+      .card { padding: 1.75rem 1rem; }
+      .likert-btn { font-size: 0.65rem; padding: 0.6rem 0.1rem; }
+      .question-text { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- ── Welcome ───────────────────────────────────── -->
+  <div id="screen-welcome" class="screen active">
+    <div class="welcome-icon">🧠</div>
+    <h1 class="welcome-title">Adaptive MBTI Quiz</h1>
+    <p class="welcome-subtitle">
+      Discover your Myers-Briggs personality type — powered by Bayesian inference
+      that selects the next question to maximise information gain about you.
+    </p>
+    <p class="welcome-note">
+      Traditional tests ask 60–93 questions. This quiz stops as soon as the
+      posterior is confident enough, typically in far fewer.
+    </p>
+    <div id="welcome-error" class="error-msg"></div>
+    <button id="btn-start" class="btn-primary">Start Quiz</button>
+  </div>
+
+  <!-- ── Question ──────────────────────────────────── -->
+  <div id="screen-question" class="screen">
+    <div class="progress-header">
+      <span id="q-label">Question 1</span>
+      <span id="q-pool">of up to <strong id="q-max">30</strong></span>
+    </div>
+    <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+
+    <div class="question-label">How well does this describe you?</div>
+    <p id="question-text" class="question-text"></p>
+
+    <div class="likert-grid" id="likert-grid">
+      <button class="likert-btn" data-value="-1">
+        <span class="dot"></span>Strongly<br>Disagree
+      </button>
+      <button class="likert-btn" data-value="-0.5">
+        <span class="dot"></span>Disagree
+      </button>
+      <button class="likert-btn" data-value="0">
+        <span class="dot"></span>Neutral
+      </button>
+      <button class="likert-btn" data-value="0.5">
+        <span class="dot"></span>Agree
+      </button>
+      <button class="likert-btn" data-value="1">
+        <span class="dot"></span>Strongly<br>Agree
+      </button>
+    </div>
+    <div class="likert-poles">
+      <span>Strongly disagree</span>
+      <span>Strongly agree</span>
+    </div>
+    <div id="question-error" class="error-msg"></div>
+  </div>
+
+  <!-- ── Result ────────────────────────────────────── -->
+  <div id="screen-result" class="screen">
+    <div class="result-header">
+      <div id="type-badge" class="type-badge">INTJ</div>
+      <p id="type-description" class="type-description"></p>
+      <span id="questions-taken" class="questions-taken"></span>
+    </div>
+
+    <div class="dimensions" id="dimensions"></div>
+
+    <button id="btn-restart" class="btn-secondary">Take Again</button>
+  </div>
+
+</div>
+
+<script>
+  const API = '';  // same origin; change to 'http://localhost:8000' if opening file directly
+
+  const DESCRIPTIONS = {
+    INTJ: 'The Architect — strategic, independent, high standards. Sees the big picture and builds systems to realise it.',
+    INTP: 'The Logician — analytical, inventive, loves theories. Seeks logical precision above all.',
+    ENTJ: 'The Commander — decisive, ambitious, natural leader. Drives inefficiency out of every system.',
+    ENTP: 'The Debater — quick-witted, curious, loves a challenge. Thrives on the exchange of ideas.',
+    INFJ: 'The Advocate — insightful, principled, quietly determined. Rare idealists who act on their values.',
+    INFP: 'The Mediator — empathetic, creative, guided by inner values. Seeks meaning in everything.',
+    ENFJ: 'The Protagonist — charismatic, inspiring, deeply cares about people. Natural mentors.',
+    ENFP: 'The Campaigner — enthusiastic, creative, sociable. Sees life as full of possibilities.',
+    ISTJ: 'The Logistician — reliable, responsible, fact-minded. Gets things done through steady diligence.',
+    ISFJ: 'The Defender — warm, meticulous, highly protective of loved ones. Quietly devoted.',
+    ESTJ: 'The Executive — organised, decisive, clear about right and wrong. Excels at managing.',
+    ESFJ: 'The Consul — caring, social, traditional. Finds fulfilment in keeping the group together.',
+    ISTP: 'The Virtuoso — bold, practical, thrives on hands-on problem solving. Calm under pressure.',
+    ISFP: 'The Adventurer — gentle, spontaneous, lives in the present. Artistic and deeply attuned.',
+    ESTP: 'The Entrepreneur — energetic, perceptive, loves action. Solves problems as they arise.',
+    ESFP: 'The Entertainer — spontaneous, playful, warm. Brings fun and energy wherever they go.',
+  };
+
+  // Dimension config: [apiKey, leftLabel, rightLabel]
+  // apiKey value > 0 → right letter is favoured
+  const DIMS = [
+    { key: 'E-I', left: 'I',  right: 'E',  label: 'Energy'      },
+    { key: 'N-S', left: 'S',  right: 'N',  label: 'Perception'  },
+    { key: 'T-F', left: 'F',  right: 'T',  label: 'Judgement'   },
+    { key: 'J-P', left: 'P',  right: 'J',  label: 'Lifestyle'   },
+  ];
+
+  // ── State ────────────────────────────────────────────
+  let sessionId     = null;
+  let questionsAsked = 0;
+  let maxQuestions  = 30;
+  let busy          = false;
+
+  // ── Screens ──────────────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showError(elementId, msg) {
+    const el = document.getElementById(elementId);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError(elementId) {
+    document.getElementById(elementId).style.display = 'none';
+  }
+
+  // ── API helpers ──────────────────────────────────────
+  async function apiPost(path, body) {
+    const res = await fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || res.statusText);
+    }
+    return res.json();
+  }
+
+  async function apiGet(path) {
+    const res = await fetch(API + path);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || res.statusText);
+    }
+    return res.json();
+  }
+
+  // ── Quiz flow ─────────────────────────────────────────
+  async function startQuiz() {
+    if (busy) return;
+    busy = true;
+    hideError('welcome-error');
+    document.getElementById('btn-start').disabled = true;
+    document.getElementById('btn-start').innerHTML = '<span class="spinner"></span>Starting…';
+
+    try {
+      const data = await apiPost('/start_quiz', { schema_name: 'mbti' });
+      sessionId      = data.session_id;
+      maxQuestions   = data.max_questions || 30;
+      questionsAsked = 0;
+      document.getElementById('q-max').textContent = maxQuestions;
+      renderQuestion(data.question_id, data.prompt, 0);
+      showScreen('screen-question');
+    } catch (e) {
+      showError('welcome-error', 'Could not start quiz: ' + e.message);
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('btn-start').textContent = 'Start Quiz';
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function submitAnswer(value) {
+    if (busy) return;
+    busy = true;
+    lockLikert(true);
+    hideError('question-error');
+
+    try {
+      const data = await apiPost('/answer', { session_id: sessionId, response: value });
+      questionsAsked = data.questions_asked || questionsAsked + 1;
+
+      if (data.complete) {
+        await loadResult();
+      } else {
+        renderQuestion(data.question_id, data.prompt, questionsAsked);
+      }
+    } catch (e) {
+      showError('question-error', 'Error: ' + e.message);
+      lockLikert(false);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function loadResult() {
+    try {
+      const data = await apiGet('/result?session_id=' + encodeURIComponent(sessionId));
+      renderResult(data);
+      showScreen('screen-result');
+    } catch (e) {
+      showError('question-error', 'Could not load result: ' + e.message);
+      lockLikert(false);
+    }
+  }
+
+  // ── Rendering ────────────────────────────────────────
+  function renderQuestion(questionId, prompt, asked) {
+    document.getElementById('question-text').textContent = prompt;
+    document.getElementById('q-label').textContent = 'Question ' + (asked + 1);
+    const pct = Math.min(100, (asked / maxQuestions) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    // Reset Likert selection
+    document.querySelectorAll('.likert-btn').forEach(b => b.classList.remove('selected'));
+    lockLikert(false);
+  }
+
+  function renderResult(data) {
+    const type = data.type || '????';
+    document.getElementById('type-badge').textContent = type;
+    document.getElementById('type-description').textContent =
+      DESCRIPTIONS[type] || 'A unique blend of traits.';
+    document.getElementById('questions-taken').textContent =
+      '✓ Completed in ' + data.questions_asked + ' questions';
+
+    const container = document.getElementById('dimensions');
+    container.innerHTML = '';
+
+    DIMS.forEach(dim => {
+      const raw = data.dimensions[dim.key] ?? 0;
+      // Map raw score [-1.5, 1.5] → [0%, 100%]; 0 → 50%
+      const pct = Math.min(100, Math.max(0, (raw + 1.5) / 3 * 100));
+      const rightActive = raw >= 0;
+
+      const row = document.createElement('div');
+      row.className = 'dim-row';
+      row.innerHTML = `
+        <div class="dim-poles">
+          <span class="${!rightActive ? 'active' : ''}">${dim.left}</span>
+          <span style="font-weight:400;color:#aaa;font-size:0.75rem">${dim.label}</span>
+          <span class="${rightActive ? 'active' : ''}">${dim.right}</span>
+        </div>
+        <div class="dim-track">
+          <div class="dim-marker" style="left:${pct}%"></div>
+        </div>`;
+      container.appendChild(row);
+    });
+  }
+
+  function lockLikert(locked) {
+    document.querySelectorAll('.likert-btn').forEach(b => {
+      b.disabled = locked;
+      if (locked) b.style.opacity = '0.6';
+      else b.style.opacity = '';
+    });
+  }
+
+  // ── Event listeners ──────────────────────────────────
+  document.getElementById('btn-start').addEventListener('click', startQuiz);
+
+  document.getElementById('likert-grid').addEventListener('click', e => {
+    const btn = e.target.closest('.likert-btn');
+    if (!btn || btn.disabled) return;
+    document.querySelectorAll('.likert-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    const value = parseFloat(btn.dataset.value);
+    setTimeout(() => submitAnswer(value), 180);  // brief visual feedback before submitting
+  });
+
+  document.getElementById('btn-restart').addEventListener('click', () => {
+    sessionId      = null;
+    questionsAsked = 0;
+    document.getElementById('btn-start').disabled = false;
+    document.getElementById('btn-start').textContent = 'Start Quiz';
+    hideError('welcome-error');
+    showScreen('screen-welcome');
+  });
+</script>
+</body>
+</html>
