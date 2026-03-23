@@ -1,0 +1,443 @@
+{
+  "instrument": "IPIP Big Five Factor Markers – 50 item",
+  "source_url": "https://ipip.ori.org/newBigFive5broadKey.htm",
+  "citation": "Goldberg, L.R. (1992). Psychological Assessment, 4, 26-42.",
+  "response_scale": "1=Very Inaccurate  2=Moderately Inaccurate  3=Neither  4=Moderately Accurate  5=Very Accurate",
+  "scoring_rule": "+keyed: scored_value = raw(1-5).  -keyed: scored_value = 6-raw.  Factor score = sum of 10 scored_values (range 10-50).",
+  "factors": {
+    "Extraversion": {
+      "n_items": 10,
+      "alpha": 0.87,
+      "mbti_proxy": "EI – high=E, low=I"
+    },
+    "Agreeableness": {
+      "n_items": 10,
+      "alpha": 0.82,
+      "mbti_proxy": "TF – high=F, low=T (INVERTED: high agree = Feeling)"
+    },
+    "Conscientiousness": {
+      "n_items": 10,
+      "alpha": 0.79,
+      "mbti_proxy": "JP – high=J, low=P"
+    },
+    "Emotional Stability": {
+      "n_items": 10,
+      "alpha": 0.86,
+      "mbti_proxy": "None – inverse of Neuroticism; no MBTI counterpart"
+    },
+    "Intellect/Openness": {
+      "n_items": 10,
+      "alpha": 0.84,
+      "mbti_proxy": "NS – high=N, low=S"
+    }
+  },
+  "notes": [
+    "The same source page also publishes 20-item versions of each factor (alpha .88-.91). The 50-item set uses the 10-item versions.",
+    "MBTI proxy mappings are researcher-constructed; Agreeableness maps INVERSELY to TF (high=F, low=T).",
+    "Emotional Stability (Factor IV) has no MBTI counterpart — it is the inverse of NEO Neuroticism.",
+    "Item E3 ('Start conversations') appears only in the 20-item Extraversion scale; included here as a core marker.",
+    "For Bayesian adaptive MBTI use: recommend weighting items by their factor loading magnitude, not uniformly."
+  ],
+  "items": [
+    {
+      "id": "E1",
+      "text": "Am the life of the party.",
+      "factor": "Extraversion",
+      "keying": "+",
+      "mbti_dimension": "EI",
+      "agree_indicates": "E"
+    },
+    {
+      "id": "E2",
+      "text": "Feel comfortable around people.",
+      "factor": "Extraversion",
+      "keying": "+",
+      "mbti_dimension": "EI",
+      "agree_indicates": "E"
+    },
+    {
+      "id": "E3",
+      "text": "Start conversations.",
+      "factor": "Extraversion",
+      "keying": "+",
+      "mbti_dimension": "EI",
+      "agree_indicates": "E"
+    },
+    {
+      "id": "E4",
+      "text": "Talk to a lot of different people at parties.",
+      "factor": "Extraversion",
+      "keying": "+",
+      "mbti_dimension": "EI",
+      "agree_indicates": "E"
+    },
+    {
+      "id": "E5",
+      "text": "Don't mind being the center of attention.",
+      "factor": "Extraversion",
+      "keying": "+",
+      "mbti_dimension": "EI",
+      "agree_indicates": "E"
+    },
+    {
+      "id": "E6",
+      "text": "Don't talk a lot.",
+      "factor": "Extraversion",
+      "keying": "-",
+      "mbti_dimension": "EI",
+      "agree_indicates": "I"
+    },
+    {
+      "id": "E7",
+      "text": "Keep in the background.",
+      "factor": "Extraversion",
+      "keying": "-",
+      "mbti_dimension": "EI",
+      "agree_indicates": "I"
+    },
+    {
+      "id": "E8",
+      "text": "Have little to say.",
+      "factor": "Extraversion",
+      "keying": "-",
+      "mbti_dimension": "EI",
+      "agree_indicates": "I"
+    },
+    {
+      "id": "E9",
+      "text": "Don't like to draw attention to myself.",
+      "factor": "Extraversion",
+      "keying": "-",
+      "mbti_dimension": "EI",
+      "agree_indicates": "I"
+    },
+    {
+      "id": "E10",
+      "text": "Am quiet around strangers.",
+      "factor": "Extraversion",
+      "keying": "-",
+      "mbti_dimension": "EI",
+      "agree_indicates": "I"
+    },
+    {
+      "id": "A1",
+      "text": "Am interested in people.",
+      "factor": "Agreeableness",
+      "keying": "+",
+      "mbti_dimension": "TF",
+      "agree_indicates": "F"
+    },
+    {
+      "id": "A2",
+      "text": "Sympathize with others' feelings.",
+      "factor": "Agreeableness",
+      "keying": "+",
+      "mbti_dimension": "TF",
+      "agree_indicates": "F"
+    },
+    {
+      "id": "A3",
+      "text": "Have a soft heart.",
+      "factor": "Agreeableness",
+      "keying": "+",
+      "mbti_dimension": "TF",
+      "agree_indicates": "F"
+    },
+    {
+      "id": "A4",
+      "text": "Take time out for others.",
+      "factor": "Agreeableness",
+      "keying": "+",
+      "mbti_dimension": "TF",
+      "agree_indicates": "F"
+    },
+    {
+      "id": "A5",
+      "text": "Feel others' emotions.",
+      "factor": "Agreeableness",
+      "keying": "+",
+      "mbti_dimension": "TF",
+      "agree_indicates": "F"
+    },
+    {
+      "id": "A6",
+      "text": "Make people feel at ease.",
+      "factor": "Agreeableness",
+      "keying": "+",
+      "mbti_dimension": "TF",
+      "agree_indicates": "F"
+    },
+    {
+      "id": "A7",
+      "text": "Am not really interested in others.",
+      "factor": "Agreeableness",
+      "keying": "-",
+      "mbti_dimension": "TF",
+      "agree_indicates": "T"
+    },
+    {
+      "id": "A8",
+      "text": "Insult people.",
+      "factor": "Agreeableness",
+      "keying": "-",
+      "mbti_dimension": "TF",
+      "agree_indicates": "T"
+    },
+    {
+      "id": "A9",
+      "text": "Am not interested in other people's problems.",
+      "factor": "Agreeableness",
+      "keying": "-",
+      "mbti_dimension": "TF",
+      "agree_indicates": "T"
+    },
+    {
+      "id": "A10",
+      "text": "Feel little concern for others.",
+      "factor": "Agreeableness",
+      "keying": "-",
+      "mbti_dimension": "TF",
+      "agree_indicates": "T"
+    },
+    {
+      "id": "C1",
+      "text": "Am always prepared.",
+      "factor": "Conscientiousness",
+      "keying": "+",
+      "mbti_dimension": "JP",
+      "agree_indicates": "J"
+    },
+    {
+      "id": "C2",
+      "text": "Pay attention to details.",
+      "factor": "Conscientiousness",
+      "keying": "+",
+      "mbti_dimension": "JP",
+      "agree_indicates": "J"
+    },
+    {
+      "id": "C3",
+      "text": "Get chores done right away.",
+      "factor": "Conscientiousness",
+      "keying": "+",
+      "mbti_dimension": "JP",
+      "agree_indicates": "J"
+    },
+    {
+      "id": "C4",
+      "text": "Like order.",
+      "factor": "Conscientiousness",
+      "keying": "+",
+      "mbti_dimension": "JP",
+      "agree_indicates": "J"
+    },
+    {
+      "id": "C5",
+      "text": "Follow a schedule.",
+      "factor": "Conscientiousness",
+      "keying": "+",
+      "mbti_dimension": "JP",
+      "agree_indicates": "J"
+    },
+    {
+      "id": "C6",
+      "text": "Am exacting in my work.",
+      "factor": "Conscientiousness",
+      "keying": "+",
+      "mbti_dimension": "JP",
+      "agree_indicates": "J"
+    },
+    {
+      "id": "C7",
+      "text": "Leave my belongings around.",
+      "factor": "Conscientiousness",
+      "keying": "-",
+      "mbti_dimension": "JP",
+      "agree_indicates": "P"
+    },
+    {
+      "id": "C8",
+      "text": "Make a mess of things.",
+      "factor": "Conscientiousness",
+      "keying": "-",
+      "mbti_dimension": "JP",
+      "agree_indicates": "P"
+    },
+    {
+      "id": "C9",
+      "text": "Often forget to put things back in their proper place.",
+      "factor": "Conscientiousness",
+      "keying": "-",
+      "mbti_dimension": "JP",
+      "agree_indicates": "P"
+    },
+    {
+      "id": "C10",
+      "text": "Shirk my duties.",
+      "factor": "Conscientiousness",
+      "keying": "-",
+      "mbti_dimension": "JP",
+      "agree_indicates": "P"
+    },
+    {
+      "id": "N1",
+      "text": "Am relaxed most of the time.",
+      "factor": "Emotional Stability",
+      "keying": "+",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N2",
+      "text": "Seldom feel blue.",
+      "factor": "Emotional Stability",
+      "keying": "+",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N3",
+      "text": "Get stressed out easily.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N4",
+      "text": "Worry about things.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N5",
+      "text": "Am easily disturbed.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N6",
+      "text": "Get upset easily.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N7",
+      "text": "Change my mood a lot.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N8",
+      "text": "Have frequent mood swings.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N9",
+      "text": "Get irritated easily.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "N10",
+      "text": "Often feel blue.",
+      "factor": "Emotional Stability",
+      "keying": "-",
+      "mbti_dimension": null,
+      "agree_indicates": null
+    },
+    {
+      "id": "O1",
+      "text": "Have a rich vocabulary.",
+      "factor": "Intellect/Openness",
+      "keying": "+",
+      "mbti_dimension": "NS",
+      "agree_indicates": "N"
+    },
+    {
+      "id": "O2",
+      "text": "Have a vivid imagination.",
+      "factor": "Intellect/Openness",
+      "keying": "+",
+      "mbti_dimension": "NS",
+      "agree_indicates": "N"
+    },
+    {
+      "id": "O3",
+      "text": "Have excellent ideas.",
+      "factor": "Intellect/Openness",
+      "keying": "+",
+      "mbti_dimension": "NS",
+      "agree_indicates": "N"
+    },
+    {
+      "id": "O4",
+      "text": "Am quick to understand things.",
+      "factor": "Intellect/Openness",
+      "keying": "+",
+      "mbti_dimension": "NS",
+      "agree_indicates": "N"
+    },
+    {
+      "id": "O5",
+      "text": "Use difficult words.",
+      "factor": "Intellect/Openness",
+      "keying": "+",
+      "mbti_dimension": "NS",
+      "agree_indicates": "N"
+    },
+    {
+      "id": "O6",
+      "text": "Spend time reflecting on things.",
+      "factor": "Intellect/Openness",
+      "keying": "+",
+      "mbti_dimension": "NS",
+      "agree_indicates": "N"
+    },
+    {
+      "id": "O7",
+      "text": "Am full of ideas.",
+      "factor": "Intellect/Openness",
+      "keying": "+",
+      "mbti_dimension": "NS",
+      "agree_indicates": "N"
+    },
+    {
+      "id": "O8",
+      "text": "Have difficulty understanding abstract ideas.",
+      "factor": "Intellect/Openness",
+      "keying": "-",
+      "mbti_dimension": "NS",
+      "agree_indicates": "S"
+    },
+    {
+      "id": "O9",
+      "text": "Am not interested in abstract ideas.",
+      "factor": "Intellect/Openness",
+      "keying": "-",
+      "mbti_dimension": "NS",
+      "agree_indicates": "S"
+    },
+    {
+      "id": "O10",
+      "text": "Do not have a good imagination.",
+      "factor": "Intellect/Openness",
+      "keying": "-",
+      "mbti_dimension": "NS",
+      "agree_indicates": "S"
+    }
+  ]
+}

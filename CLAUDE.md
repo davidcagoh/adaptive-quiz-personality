@@ -245,3 +245,74 @@ When adding new features, add corresponding tests in `test_modules.py`.
 - **Root-level `run_*.py` files** — Thin delegators for backwards compatibility; keep them minimal.
 - **`adaptive_quiz/core/`** — Domain-agnostic; never import MBTI-specific code here.
 - **`results/`** — Generated output; do not commit large binary files unless intentional.
+
+---
+
+## Decision Log
+
+### 2026-03-22 — Schema replacement: 30-item ad-hoc → 80-item IPIP-NEO subset
+
+**Context:** The original `mbti.json` was hand-authored with no validated psychometric source. Several questions carried empirically unfounded cross-loadings (e.g. a social-gathering question loading on both EI and NS), and the item content was not grounded in published reliability data.
+
+**Options considered:**
+
+| Option | Items | Decision |
+|--------|-------|----------|
+| Keep existing schema | 30 | Rejected — no validation, incorrect cross-loadings |
+| IPIP Big Five Factor Markers (Goldberg 1992) | 50 | Rejected — see below |
+| IPIP-NEO 8-facet subset (Goldberg 1999) | 80 | **Selected** |
+| IPIP-NEO full instrument | 300 | Rejected — see below |
+
+**Why not the 50-item file:**
+Contains 10 Emotional Stability (Neuroticism) items with no MBTI counterpart. An adaptive selection engine will pull those items whenever they project high variance onto the posterior, consuming question budget with no MBTI signal. Would require explicit exclusion logic in the selection strategy. The 8-facet subset avoids this by simply not including them in the bank.
+
+**Why not the full 300-item file:**
+60 Neuroticism items, O6 Liberalism items with political content ("Tend to vote for liberal/conservative candidates"), and N5 Immoderation items with eating-disorder-adjacent content. Weaker facets dilute adaptive selection quality — the engine wastes turns on low-alpha items when high-alpha items exist in the same dimension.
+
+**The 8 facets selected and why:**
+
+| MBTI | Facets | Rationale |
+|------|--------|-----------|
+| EI | E1 Friendliness (α=.87), E2 Gregariousness (α=.79) | Purest social-preference facets; E4 Activity Level and E5 Excitement-Seeking conflate physical energy and novelty-seeking with social orientation |
+| NS | O1 Imagination (α=.83), O5 Intellect (α=.86) | Abstract/concrete cognitive style; avoids O6 political contamination and O3 Emotionality which bleeds into TF |
+| TF | A3 Altruism (α=.77), A6 Sympathy (α=.75) | Warmth/empathy content closest to decision-making style; other A facets (Trust, Morality, Modesty) measure interpersonal orientation rather than T/F |
+| JP | C2 Orderliness (α=.82), C5 Self-Discipline (α=.85) | Strongest JP proxies; C3 Dutifulness and C4 Achievement-Striving load on work ethic rather than structural preference |
+
+**Critical weight convention — Agreeableness inversion:**
+High Agreeableness = Feeling. This is non-intuitive and is the most common implementation error. In the engine's weight convention (`TF` positive pole = T):
+- `+keyed` A items (agreeing = more agreeable = Feeling) → `weight[TF] = -1.0`
+- `-keyed` A items (agreeing = less agreeable = Thinking) → `weight[TF] = +1.0`
+
+The `agree_indicates_mbti` field in the source JSON encodes this correctly. The conversion script trusts that field directly rather than computing from `keying`.
+
+**Source files:** `adaptive_quiz/schemas/files_extracted/` — the two IPIP JSON item banks and the explainer document used to make these decisions. Public domain: https://ipip.ori.org
+
+---
+
+## Next Steps
+
+### High priority
+
+- **IRT calibration** — The current weight vectors are uniform (±1.0). Items differ in discrimination power (how strongly they separate trait levels). Fit a 2-parameter logistic (2PL) IRT model to the Open Psychometrics IPIP-NEO dataset (~1M responses, https://openpsychometrics.org/_rawdata/) and replace uniform weights with empirically derived *a*-parameters. This is the single highest-leverage improvement to inference accuracy.
+
+- **Response scale alignment** — The IPIP uses a 1–5 Likert scale; the engine currently maps responses to `{-1, -0.5, 0, 0.5, 1}`. Verify the frontend presents the IPIP standard labels: *Very Inaccurate / Moderately Inaccurate / Neither / Moderately Accurate / Very Accurate* rather than agree/disagree framing.
+
+- **Item ordering** — The current schema groups all items by facet (20 EI items, then 20 NS items, etc.). Administer interleaved across dimensions to reduce acquiescence bias and prevent respondents from pattern-matching the construct being measured. Shuffle at schema load time or randomise per session.
+
+### Medium priority
+
+- **Neuroticism as bonus output** — The 300-item file has 60 Neuroticism items excluded from the adaptive bank. After the quiz converges on the 4 MBTI dimensions, Neuroticism could be scored as a supplementary output using the N1 Anxiety + N3 Depression facets (highest alphas: .83, .88). Would require a 5th dimension in the posterior or a separate post-hoc scoring step.
+
+- **Session persistence** — Currently all sessions are lost on server restart. Add SQLite or Redis-backed session storage. The `session_store.py` interface is already abstracted; swap the implementation.
+
+- **Response time in API** — `backend/main.py` hardcodes `response_time=1.0`. The frontend should capture wall-clock time between question display and answer submission and pass it in the `/answer` payload. The noise model already accepts response time; this is purely a frontend + API wiring task.
+
+- **Error handling on invalid session IDs** — `session_store.py` raises `KeyError` on unknown IDs. Wrap with a 404 response in `backend/main.py`.
+
+### Lower priority
+
+- **Big Five output mode** — The engine already infers a 4D posterior. Outputting raw Big Five scores (E, O, A, C without the MBTI mapping layer) is a one-line change in `scoring.py` and would make results more scientifically interpretable.
+
+- **IPIP-NEO-120 as alternative bank** — Johnson (2014) selected the 4 highest-discriminating items per facet from the 300-item pool. The resulting 120-item instrument is more efficient per item. The 8-facet subset from it would be 32 items — a leaner bank if convergence studies show the current 80 items are redundant.
+
+- **Cross-loading investigation** — The current schema has zero cross-loadings (every item loads on exactly one dimension). Some IPIP items genuinely load on multiple Big Five factors. Introducing empirically validated cross-loadings (from published factor analyses) would give the engine richer per-question information but complicates the weight convention.
