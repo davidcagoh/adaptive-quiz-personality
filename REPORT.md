@@ -1,5 +1,7 @@
 # Adaptive Bayesian MBTI Quiz — Technical Report
 
+**Live demo:** [adaptive-quiz-personality.vercel.app](https://adaptive-quiz-personality.vercel.app)
+
 ## Overview
 
 This project is a personality quiz engine that uses Bayesian inference and active question selection to converge on a Myers-Briggs type in roughly half the questions a standard fixed-length test requires — while maintaining comparable accuracy.
@@ -107,14 +109,9 @@ Random+stop  43.9 questions  −45.1%  vs full    91.4% type accuracy
 
 **Adaptive vs random order (same stopping rule):** 39.8 vs 43.9 questions — a 9.4% further reduction from smart question ordering alone. The selection strategy is doing real work beyond early stopping.
 
-**Per-axis accuracy (adaptive vs true):**
+![Convergence comparison and per-axis accuracy](assets/convergence.png)
 
-| Axis | Accuracy |
-|------|----------|
-| EI   | 97.4%    |
-| NS   | 97.4%    |
-| TF   | 96.6%    |
-| JP   | 98.2%    |
+*Left: distribution of questions asked across 500 simulated users. The adaptive engine (median 27) consistently reaches the stopping criterion sooner than random ordering (median 35), both well short of the 80-question full test. Right: per-axis classification accuracy against the true latent type.*
 
 ### Accuracy–efficiency Pareto curve (SignConfidenceStopping threshold sweep, N = 1,000)
 
@@ -124,10 +121,14 @@ Sweeping the stopping threshold from 0.75 to 0.99:
 |-----------|---------------|----------------------|
 | 0.75 | 24.5 | 85.4% |
 | 0.80 | 31.8 | 86.0% |
-| 0.85 | 39.9 | **86.8%** |
+| **0.85** | **39.9** | **86.8%** |
 | 0.90 | 47.1 | 86.8% |
 | 0.95 | 54.7 | 86.8% |
 | 0.99 | 65.0 | 86.8% |
+
+![Threshold sweep Pareto curve](assets/pareto.png)
+
+*Left: questions asked rises monotonically with threshold as expected. Right: accuracy plateaus at threshold 0.85 — the red-shaded region marks the schema ceiling where additional questions buy no further accuracy. The optimal operating point (red dot) is p = 0.85.*
 
 **Accuracy plateaus at threshold 0.85.** Asking more questions past that point costs questions but buys zero additional accuracy. This plateau is not a stopping rule failure — it is a schema ceiling: the uniform ±1.0 weight vectors leave residual ambiguity that additional questions cannot resolve. IRT calibration (fitting empirically derived discrimination parameters *a* from the Open Psychometrics IPIP-NEO dataset) is the highest-leverage improvement.
 

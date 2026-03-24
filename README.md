@@ -2,7 +2,7 @@
 
 An adaptive personality quiz engine that uses Bayesian inference to converge on a Myers-Briggs type in roughly half the questions a standard fixed-length test requires.
 
-**Live demo:** deployed on Vercel (FastAPI backend + vanilla JS frontend, sessions persisted to Supabase).
+**[Try it live →](https://adaptive-quiz-personality.vercel.app)**
 
 ---
 
@@ -16,6 +16,8 @@ An adaptive personality quiz engine that uses Bayesian inference to converge on 
 | 16personalities (reference) | ~93 | — |
 
 50% fewer questions than an exhaustive test. Per-axis accuracy above 96% on all four dimensions (EI 97.4%, NS 97.4%, TF 96.6%, JP 98.2%).
+
+![Convergence comparison](assets/convergence.png)
 
 See [REPORT.md](REPORT.md) for the full technical writeup — observation model, Bayesian update derivation, selection strategy, schema design rationale, and experiment results.
 
