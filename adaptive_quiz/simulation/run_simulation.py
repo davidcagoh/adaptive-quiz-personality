@@ -11,14 +11,10 @@ import matplotlib.animation as animation
 from matplotlib.colors import to_rgba
 from pathlib import Path
 
-import sys
-_root = Path(__file__).resolve().parent.parent.parent
-if str(_root) not in sys.path:
-    sys.path.insert(0, str(_root))
-from synthetic_user import SyntheticUser
+from adaptive_quiz.simulation.synthetic_user import SyntheticUser
 
 from adaptive_quiz.core import AdaptiveEngine, generate_question_weights
-from adaptive_quiz.scoring import MBTIScorer
+from adaptive_quiz.domains.mbti import MBTIScorer
 
 
 def _load_schema(path: Path) -> dict:

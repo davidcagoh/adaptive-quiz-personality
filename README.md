@@ -1,177 +1,87 @@
-# Adaptive Bayesian Personality Quiz Simulation
+# Adaptive Bayesian MBTI Quiz
 
-## Overview
+An adaptive personality quiz engine that uses Bayesian inference to converge on a Myers-Briggs type in roughly half the questions a standard fixed-length test requires.
 
-This project simulates an **adaptive personality quiz** using a Bayesian framework. The system estimates latent personality traits over multiple dimensions (e.g., MBTI axes) by:
-
-- Asking a series of questions
-- Capturing user responses on a 5-point Likert scale
-- Using response time as a measure of confidence
-- Updating the latent trait estimates with **Bayesian updates**
-- Selecting subsequent questions adaptively to reduce uncertainty efficiently
-- Visualizing the latent state evolution with dynamic ellipses and a decaying trajectory
-
-This serves as a **proof-of-concept for adaptive testing**, showing how an “Adam-like” adaptive optimizer analogy can be applied to human trait inference.
+**Live demo:** deployed on Vercel (FastAPI backend + vanilla JS frontend, sessions persisted to Supabase).
 
 ---
 
-## Features
+## Results (1,000-user simulation)
 
-- **Modular Design**
-  - `synthetic_user.py` → Simulates user responses with noise and response time
-  - `bayesian_update.py` → Performs Gaussian Bayesian updates
-  - `adaptive_question_selector.py` → Generates question weights and selects next question based on posterior uncertainty
-  - `run_simulation.py` → Orchestrates the simulation and renders the animation
+| Method | Avg. questions | Type accuracy |
+|--------|---------------|--------------|
+| Full test (80 questions) | 80 | ~91% |
+| **This engine (adaptive)** | **39.8** | **89.7%** |
+| Random order + early stopping | 43.9 | 91.4% |
+| 16personalities (reference) | ~93 | — |
 
-- **Adaptive Question Selection**
-  - **Variance heuristic** (default): Chooses question to maximize projected variance reduction
-  - **Expected information gain**: Advanced mode using mutual information for optimal selection
-  - Avoids repeating previously asked questions
-  - Backward compatible: variance mode is default
+50% fewer questions than an exhaustive test. Per-axis accuracy above 96% on all four dimensions (EI 97.4%, NS 97.4%, TF 96.6%, JP 98.2%).
 
-- **Visualization**
-  - **2D mode**: Dynamic scatter point with uncertainty ellipse and decaying path
-  - **Radar plot**: Multi-axis trait profile with uncertainty bands
-  - **Multi-2D**: Small multiples showing all trait pairs simultaneously
-  - Real-time metrics overlay: uncertainty trace, error from true traits
-  - Step magnitude encoded in point size
-  - Color intensity indicates recency / confidence
-
-- **Synthetic Users**
-  - **Base SyntheticUser**: Standard response behavior
-  - **ConfidentUser**: Fast responses, low noise, consistent answers
-  - **HesitantUser**: Slow responses, high noise, uncertain answers
-  - **FragmentedUser**: Inconsistent responses along some trait axes
-
-- **Experimental Analysis**
-  - Compare adaptive vs random question selection
-  - Per-axis posterior variance and error tracking
-  - Statistical validation: t-tests, effect sizes, convergence metrics
-  - Export results to CSV/JSON for reproducibility
-  - Comprehensive plots: trajectories, per-axis metrics, boxplots
+See [REPORT.md](REPORT.md) for the full technical writeup — observation model, Bayesian update derivation, selection strategy, schema design rationale, and experiment results.
 
 ---
 
-## Requirements
+## How it works
 
-- Python 3.8+  
-- Packages:
-  ```bash
-  pip install numpy matplotlib scipy
-  ```
-
----
-
-## Project Structure
+Each question has a 4D weight vector across MBTI axes. After each response, a Gaussian conjugate update narrows the posterior over latent trait space:
 
 ```
-adaptive-quiz-personality/
-│
-├─ bayesian_update.py            # Bayesian update logic
-├─ adaptive_question_selector.py # Question generation and adaptive selection
-├─ synthetic_user.py             # Simulated user responses (with archetypes)
-├─ run_simulation.py             # Orchestrator: simulation + animation
-├─ run_experiments.py            # Experimental comparison with statistics
-├─ test_modules.py               # Unit tests for modularity verification
-├─ archive/                      # Archived prototype versions
-└─ README.md                     # This file
+y_t = w_t^T θ + ε_t,   ε_t ~ N(0, σ²_t)
+
+Σ_post = (Σ_prior⁻¹ + w_t w_t^T / σ²_t)⁻¹
+μ_post = Σ_post (Σ_prior⁻¹ μ_prior + w_t y_t / σ²_t)
 ```
+
+The next question is chosen to maximally reduce remaining uncertainty (argmax **w**ᵀ**Σw**). The quiz stops once posterior variance falls below a threshold on all four axes.
 
 ---
 
-## Getting Started
-
-1. **Clone the repository**
+## Running locally
 
 ```bash
-git clone <repo_url>
-cd adaptive-quiz-personality
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Start quiz (backend + frontend at http://127.0.0.1:8000)
+python -m uvicorn backend.main:app --reload
 ```
 
-2. **Install dependencies**
-
+**Simulations and experiments:**
 ```bash
-pip install numpy matplotlib
+python -m adaptive_quiz.simulation.simulate_convergence   # 3-way adaptive vs random vs full
+python -m adaptive_quiz.experiments.threshold_sweep       # accuracy/efficiency Pareto curve
+python -m adaptive_quiz.simulation.run_simulation
+python -m adaptive_quiz.experiments.run_experiments
 ```
 
-3. **Run the simulation**
-
+**Tests:**
 ```bash
-python run_simulation.py
+python -m pytest test_modules.py
 ```
-
-- This will simulate a synthetic user taking the adaptive quiz
-- Displays a dynamic 2D animation with metrics overlay
-- Options: `mode='2d'`, `'radar'`, or `'multi_2d'` for different visualizations
-
-4. **Run experiments**
-
-```bash
-python run_experiments.py
-```
-
-- Compares adaptive vs random question selection across multiple users
-- Generates statistical analysis and saves results to `results/` directory
-- Creates comprehensive plots showing convergence and per-axis metrics
 
 ---
 
-## How it Works
+## Architecture
 
-1. **Initialization**
-   - Synthetic user is generated with latent traits (`theta_true`)
-   - Prior mean (`mu`) is set to zeros
-   - Covariance (`Sigma`) is initialized as identity
+```
+adaptive_quiz/core/          Domain-agnostic Bayesian engine
+adaptive_quiz/domains/mbti/  MBTI schema + scoring
+adaptive_quiz/simulation/    Synthetic users for benchmarking
+adaptive_quiz/experiments/   Multi-strategy comparison framework
+backend/                     FastAPI REST API
+frontend/index.html          Single-page quiz UI
+```
 
-2. **Question Loop**
-   - Select next question adaptively using `select_next_question()`
-   - Simulate user response:
-     - Likert scale (-1, -0.5, 0, 0.5, 1)
-     - Response time scales noise variance
-   - Update posterior:
-     ```python
-     mu, Sigma = bayesian_update(mu, Sigma, w_t, y_t, sigma2_t)
-     ```
-   - Store trajectory for visualization
-
-3. **Visualization**
-   - Latent point moves in 2D projection
-   - Ellipse reflects current covariance
-   - Path fades over time (decaying trajectory)
-   - Color intensity corresponds to recency
+The engine is domain-agnostic — adding a new personality framework requires only a schema JSON and a scoring function. See [REPORT.md](REPORT.md) for extension instructions and design decisions.
 
 ---
 
-## Recent Updates
+## Question bank
 
-### ✅ Implemented Features
-
-- **Expected Information Gain**: Advanced question selection using mutual information (`mode='info_gain'`)
-- **User Archetypes**: `ConfidentUser`, `HesitantUser`, `FragmentedUser` subclasses
-- **Multi-Axis Visualization**: Radar plots and small multiples for all trait pairs
-- **Metrics Overlay**: Real-time uncertainty trace and error from true traits
-- **Experimental Framework**: Statistical validation with t-tests, effect sizes, CSV/JSON export
-- **Per-Axis Tracking**: Individual trait variance and error trajectories
-- **Unit Tests**: Comprehensive test suite verifying modularity and correctness
-
-### 🔄 Extending the System
-
-- **Question Pool Management**: Load questions from files/database instead of random generation
-- **Longitudinal Tracking**: Multi-session or temporal tracking across quiz attempts
-- **Exploration/Exploitation**: Add trade-off parameters for question selection
-- **Interface Integration**: Feed trajectory and ellipses into GUI or web interface for real-time interaction
-
----
-
-## References / Inspiration
-
-- Bayesian adaptive testing: Kalman filter analogy for latent trait updates
-- MBTI / personality quizzes: Likert-scale responses
-- Adam optimizer: analogy for adaptive step sizing using variance / confidence
+80-item IPIP-NEO subset (Goldberg 1999), public domain. Two facets per MBTI axis chosen for high internal consistency (α > 0.75) and minimal cross-axis bleed. Full rationale in [REPORT.md § Schema Design](REPORT.md#schema-design).
 
 ---
 
 ## License
 
-This project is released under the MIT License. See the `LICENSE` file for details.
-
+MIT.

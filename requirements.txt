@@ -1,0 +1,6 @@
+# Backend + Vercel deployment
+numpy
+fastapi
+pydantic
+uvicorn
+supabase

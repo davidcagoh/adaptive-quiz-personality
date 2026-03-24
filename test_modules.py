@@ -5,9 +5,8 @@ Tests verify modularity, correctness, and that modules don't rely on global stat
 
 import numpy as np
 import unittest
-from bayesian_update import bayesian_update
-from adaptive_question_selector import generate_question_weights, select_next_question, expected_information_gain
-from synthetic_user import SyntheticUser, ConfidentUser, HesitantUser, FragmentedUser
+from adaptive_quiz.core import bayesian_update, generate_question_weights, select_next_question, expected_information_gain
+from adaptive_quiz.simulation import SyntheticUser, ConfidentUser, HesitantUser, FragmentedUser
 
 
 class TestBayesianUpdate(unittest.TestCase):

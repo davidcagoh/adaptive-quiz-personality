@@ -1,6 +1,7 @@
 """
-Experiment script: uses AdaptiveEngine, synthetic or MBTI schema, MBTIScorer only at final stage.
-Plotting and statistics unchanged.
+Experiment script: compares selection strategies on the MBTI schema.
+Uses AdaptiveEngine with SignConfidenceStopping so questions_to_convergence
+reflects the actual stopping rule firing, not exhausting the question bank.
 """
 
 import json
@@ -11,14 +12,14 @@ from scipy import stats
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-import sys
-_root = Path(__file__).resolve().parent.parent.parent
-if str(_root) not in sys.path:
-    sys.path.insert(0, str(_root))
-from synthetic_user import SyntheticUser
+from adaptive_quiz.simulation.synthetic_user import SyntheticUser
 
-from adaptive_quiz.core import AdaptiveEngine, generate_question_weights
-from adaptive_quiz.scoring import MBTIScorer
+from adaptive_quiz.core import (
+    AdaptiveEngine,
+    SignConfidenceStopping,
+    generate_question_weights,
+)
+from adaptive_quiz.domains.mbti import MBTIScorer, load_mbti_schema
 
 
 def _make_random_selector(rng: np.random.RandomState) -> Callable:
@@ -48,27 +49,37 @@ def run_single_user_simulation(
     T: int,
     selection_mode: str = "variance",
     random_seed: Optional[int] = None,
+    confidence_threshold: float = 0.95,
 ) -> Dict[str, Any]:
     """
-    Run a single user simulation with AdaptiveEngine.
+    Run a single user simulation with AdaptiveEngine + SignConfidenceStopping.
 
     Returns dict with mu_traj, Sigma_traj, per_axis_variance_traj, per_axis_error_traj,
-    total_error_traj, uncertainty_traj.
+    total_error_traj, uncertainty_traj, questions_to_convergence.
     """
     true_theta = user.theta_true
     questions = schema["questions"]
     T = min(T, len(questions))
+    stopping_rule = SignConfidenceStopping(confidence_threshold=confidence_threshold)
 
     if selection_mode == "random":
         rng = np.random.RandomState(random_seed)
         strategy = _make_random_selector(rng)
-        engine = AdaptiveEngine(schema=schema, selection_strategy=strategy)
+        engine = AdaptiveEngine(
+            schema=schema,
+            selection_strategy=strategy,
+            stopping_rule=stopping_rule,
+        )
     else:
-        engine = AdaptiveEngine(schema=schema, selection_mode=selection_mode)
+        engine = AdaptiveEngine(
+            schema=schema,
+            selection_mode=selection_mode,
+            stopping_rule=stopping_rule,
+        )
 
     mu_traj = [engine.get_state()["mu"].copy()]
     Sigma_traj = [engine.get_state()["Sigma"].copy()]
-    questions_to_convergence = T  # default: used all questions
+    questions_to_convergence = T  # default if stopping rule never fires
 
     for step in range(T):
         next_q = engine.get_next_question()
@@ -107,15 +118,21 @@ def run_single_user_simulation(
 
 def run_multiple_users_comparison(
     d: int = 4,
-    T: int = 30,
+    T: int = 80,
     num_users: int = 20,
     seed: int = 1234,
     selection_modes: List[str] = ("variance", "random"),
+    schema: Optional[Dict[str, Any]] = None,
+    confidence_threshold: float = 0.95,
 ) -> Dict[str, Any]:
     """
     Run multiple synthetic users, comparing selection strategies via AdaptiveEngine.
-    Uses synthetic question pool (same for all modes per user).
+    If schema is None, uses the MBTI schema. Pass a synthetic schema for unit-testing.
     """
+    if schema is None:
+        schema = load_mbti_schema()
+        T = len(schema["questions"])
+
     rng = np.random.RandomState(seed)
     results: Dict[str, Dict[str, List]] = {}
     for mode in selection_modes:
@@ -134,14 +151,13 @@ def run_multiple_users_comparison(
     for user_idx in range(num_users):
         user_seed = seed + user_idx
         user = SyntheticUser(d=d, seed=user_seed)
-        w_list = generate_question_weights(d, T, random_state=np.random.RandomState(user_seed + 10000))
-        schema = _schema_from_weights(d, w_list)
 
         for mode in selection_modes:
             sim_result = run_single_user_simulation(
                 user, schema, d, T,
                 selection_mode=mode,
                 random_seed=user_seed + 20000 if mode == "random" else None,
+                confidence_threshold=confidence_threshold,
             )
             results[mode]["final_uncertainty"].append(sim_result["uncertainty_traj"][-1])
             results[mode]["uncertainty_traj"].append(sim_result["uncertainty_traj"])
@@ -154,7 +170,7 @@ def run_multiple_users_comparison(
             results[mode]["questions_to_convergence"].append(sim_result["questions_to_convergence"])
 
     for mode in selection_modes:
-        for key in results[mode]:
+        for key in ["final_uncertainty", "final_total_error", "questions_to_convergence"]:
             results[mode][key] = np.array(results[mode][key])
     return results
 
@@ -163,7 +179,7 @@ def compute_statistics(
     results: Dict[str, Any],
     selection_modes: List[str] = ("variance", "random"),
 ) -> Dict[str, Any]:
-    """Statistical tests comparing selection modes vs random."""
+    """Statistical tests comparing each selection mode vs random."""
     stats_dict = {}
     for mode in selection_modes:
         if mode == "random":
@@ -176,20 +192,6 @@ def compute_statistics(
         random_err = results["random"]["final_total_error"]
         t_err, p_err = stats.ttest_rel(adaptive_err, random_err)
         eff_err = (np.mean(adaptive_err) - np.mean(random_err)) / (np.std(random_err) + 1e-10)
-        initial_unc = results[mode]["uncertainty_traj"][:, 0]
-        target_unc = 0.5 * initial_unc
-        conv_steps = []
-        for i, traj in enumerate(results[mode]["uncertainty_traj"]):
-            below = np.where(traj <= target_unc[i])[0]
-            conv_steps.append(below[0] if len(below) > 0 else len(traj) - 1)
-        random_conv = []
-        for i, traj in enumerate(results["random"]["uncertainty_traj"]):
-            below = np.where(traj <= target_unc[i])[0]
-            random_conv.append(below[0] if len(below) > 0 else len(traj) - 1)
-        t_conv, p_conv = stats.ttest_rel(conv_steps, random_conv)
-        eff_conv = (np.mean(conv_steps) - np.mean(random_conv)) / (np.std(random_conv) + 1e-10)
-        # Questions-to-convergence: the headline metric.
-        # Compares actual number of questions needed before the stopping rule fires.
         adaptive_qtc = np.array(results[mode]["questions_to_convergence"])
         random_qtc = np.array(results["random"]["questions_to_convergence"])
         t_qtc, p_qtc = stats.ttest_rel(adaptive_qtc, random_qtc)
@@ -211,11 +213,6 @@ def compute_statistics(
                 "mean_adaptive": float(np.mean(adaptive_err)), "mean_random": float(np.mean(random_err)),
                 "improvement_pct": float((1 - np.mean(adaptive_err) / (np.mean(random_err) + 1e-10)) * 100),
             },
-            "convergence": {
-                "t_statistic": float(t_conv), "p_value": float(p_conv), "effect_size": float(eff_conv),
-                "mean_adaptive": float(np.mean(conv_steps)), "mean_random": float(np.mean(random_conv)),
-                "improvement_pct": float((1 - np.mean(conv_steps) / (np.mean(random_conv) + 1e-10)) * 100),
-            },
         }
     return stats_dict
 
@@ -236,6 +233,7 @@ def save_results(
             "std_final_uncertainty": float(np.std(results[mode]["final_uncertainty"])),
             "mean_final_error": float(np.mean(results[mode]["final_total_error"])),
             "std_final_error": float(np.std(results[mode]["final_total_error"])),
+            "mean_questions_to_convergence": float(np.mean(results[mode]["questions_to_convergence"])),
         }
     with open(output_path / f"{prefix}_summary.json", "w") as f:
         json.dump(summary, f, indent=2)
@@ -243,7 +241,7 @@ def save_results(
     with open(output_path / f"{prefix}_per_user.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
-            ["user_id", "method", "final_uncertainty", "final_error"]
+            ["user_id", "method", "questions_to_convergence", "final_uncertainty", "final_error"]
             + [f"final_variance_axis_{i}" for i in range(d)]
             + [f"final_error_axis_{i}" for i in range(d)]
         )
@@ -251,6 +249,7 @@ def save_results(
             for user_idx in range(len(results[mode]["final_uncertainty"])):
                 row = [
                     user_idx, mode,
+                    results[mode]["questions_to_convergence"][user_idx],
                     results[mode]["final_uncertainty"][user_idx],
                     results[mode]["final_total_error"][user_idx],
                 ]
@@ -265,79 +264,88 @@ def plot_results(
     stats_dict: Dict[str, Any],
     selection_modes: List[str] = ("variance", "random"),
 ) -> plt.Figure:
-    """Create trajectory and boxplot figures."""
+    """Create trajectory and distribution figures."""
     fig = plt.figure(figsize=(16, 10))
+
     ax1 = plt.subplot(2, 3, 1)
     for mode in selection_modes:
-        m = results[mode]["uncertainty_traj"].mean(axis=0)
-        s = results[mode]["uncertainty_traj"].std(axis=0)
+        trajs = results[mode]["uncertainty_traj"]
+        max_len = max(len(t) for t in trajs)
+        padded = np.array([np.pad(t, (0, max_len - len(t)), constant_values=t[-1]) for t in trajs])
+        m, s = padded.mean(axis=0), padded.std(axis=0)
         ax1.plot(m, label=mode)
         ax1.fill_between(range(len(m)), m - s, m + s, alpha=0.2)
     ax1.set_xlabel("Step")
-    ax1.set_ylabel("Trace of Posterior Covariance")
+    ax1.set_ylabel("Trace(Σ)")
     ax1.set_title("Uncertainty Convergence")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     ax2 = plt.subplot(2, 3, 2)
     for mode in selection_modes:
-        m = results[mode]["total_error_traj"].mean(axis=0)
-        s = results[mode]["total_error_traj"].std(axis=0)
+        trajs = results[mode]["total_error_traj"]
+        max_len = max(len(t) for t in trajs)
+        padded = np.array([np.pad(t, (0, max_len - len(t)), constant_values=t[-1]) for t in trajs])
+        m, s = padded.mean(axis=0), padded.std(axis=0)
         ax2.plot(m, label=mode)
         ax2.fill_between(range(len(m)), m - s, m + s, alpha=0.2)
     ax2.set_xlabel("Step")
-    ax2.set_ylabel("||mu - theta_true||")
+    ax2.set_ylabel("||μ - θ_true||")
     ax2.set_title("Posterior Error Convergence")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
-    d = results[selection_modes[0]]["per_axis_variance_traj"].shape[2]
     ax3 = plt.subplot(2, 3, 3)
-    for axis in range(d):
-        for mode in selection_modes:
-            m = results[mode]["per_axis_variance_traj"][:, :, axis].mean(axis=0)
-            ax3.plot(m, label=f"{mode} axis {axis}", linestyle="--" if mode == "random" else "-", alpha=0.7)
-    ax3.set_xlabel("Step")
-    ax3.set_ylabel("Per-Axis Variance")
-    ax3.set_title("Per-Axis Uncertainty")
-    ax3.legend(ncol=2, fontsize=8)
-    ax3.grid(True, alpha=0.3)
+    ax3.boxplot(
+        [results[mode]["questions_to_convergence"] for mode in selection_modes],
+        tick_labels=selection_modes,
+    )
+    ax3.set_ylabel("Questions to convergence")
+    ax3.set_title("Questions to Convergence")
+    ax3.grid(True, alpha=0.3, axis="y")
 
     ax4 = plt.subplot(2, 3, 4)
-    for axis in range(d):
-        for mode in selection_modes:
-            m = results[mode]["per_axis_error_traj"][:, :, axis].mean(axis=0)
-            ax4.plot(m, label=f"{mode} axis {axis}", linestyle="--" if mode == "random" else "-", alpha=0.7)
-    ax4.set_xlabel("Step")
-    ax4.set_ylabel("Per-Axis Error")
-    ax4.set_title("Per-Axis Error")
-    ax4.legend(ncol=2, fontsize=8)
+    for mode in selection_modes:
+        q = results[mode]["questions_to_convergence"]
+        ax4.hist(q, bins=20, alpha=0.6, label=mode)
+    ax4.set_xlabel("Questions asked")
+    ax4.set_ylabel("Count")
+    ax4.set_title("Distribution of Questions Asked")
+    ax4.legend()
     ax4.grid(True, alpha=0.3)
 
     ax5 = plt.subplot(2, 3, 5)
-    ax5.boxplot([results[mode]["final_uncertainty"] for mode in selection_modes], tick_labels=selection_modes)
-    ax5.set_ylabel("Final Uncertainty")
+    ax5.boxplot(
+        [results[mode]["final_uncertainty"] for mode in selection_modes],
+        tick_labels=selection_modes,
+    )
+    ax5.set_ylabel("Final Trace(Σ)")
     ax5.set_title("Final Uncertainty Distribution")
     ax5.grid(True, alpha=0.3, axis="y")
 
     ax6 = plt.subplot(2, 3, 6)
-    ax6.boxplot([results[mode]["final_total_error"] for mode in selection_modes], tick_labels=selection_modes)
-    ax6.set_ylabel("Final Error")
+    ax6.boxplot(
+        [results[mode]["final_total_error"] for mode in selection_modes],
+        tick_labels=selection_modes,
+    )
+    ax6.set_ylabel("Final ||μ - θ_true||")
     ax6.set_title("Final Error Distribution")
     ax6.grid(True, alpha=0.3, axis="y")
+
     plt.tight_layout()
     return fig
 
 
 if __name__ == "__main__":
-    d = 4
-    T = 30
-    num_users = 20
+    num_users = 200
     seed = 42
-    selection_modes = ["variance", "random", "info_gain"]
+    selection_modes = ["variance", "random"]
 
+    print("Running experiment on MBTI schema with SignConfidenceStopping(0.85)...")
     results = run_multiple_users_comparison(
-        d=d, T=T, num_users=num_users, seed=seed, selection_modes=selection_modes
+        num_users=num_users,
+        seed=seed,
+        selection_modes=selection_modes,
     )
     stats_dict = compute_statistics(results, selection_modes)
 
@@ -356,9 +364,6 @@ if __name__ == "__main__":
         print(f"  Error: p={stats_dict[mode]['error']['p_value']:.4f}, "
               f"effect={stats_dict[mode]['error']['effect_size']:.3f}, "
               f"improvement={stats_dict[mode]['error']['improvement_pct']:.1f}%")
-        print(f"  Convergence: p={stats_dict[mode]['convergence']['p_value']:.4f}, "
-              f"effect={stats_dict[mode]['convergence']['effect_size']:.3f}, "
-              f"improvement={stats_dict[mode]['convergence']['improvement_pct']:.1f}%")
 
     save_results(results, stats_dict, output_dir="results", prefix="experiment")
     fig = plot_results(results, stats_dict, selection_modes)

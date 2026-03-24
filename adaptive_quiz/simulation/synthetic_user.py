@@ -1,11 +1,5 @@
 import numpy as np
 
-"""
-CHANGES:
-- Added user archetype subclasses: ConfidentUser, HesitantUser, FragmentedUser
-- Each archetype modifies response behavior (speed, noise, consistency)
-- Base SyntheticUser remains unchanged for backward compatibility
-"""
 
 class SyntheticUser:
     """
@@ -91,11 +85,11 @@ class FragmentedUser(SyntheticUser):
             self.flip_axes = set(self.rng.choice(d, num_flip, replace=False))
         else:
             self.flip_axes = set(flip_axes)
-    
+
     def simulate_response(self, w_t):
         # Check if this question probes a flipped axis
         probes_flipped = any(w_t[axis] != 0 for axis in self.flip_axes)
-        
+
         if probes_flipped and self.rng.random() < self.flip_probability:
             # Flip the true trait for this question
             theta_flipped = self.theta_true.copy()
@@ -106,7 +100,7 @@ class FragmentedUser(SyntheticUser):
         else:
             # Normal response
             y_cont = w_t @ self.theta_true + self.rng.normal(0, 0.2)
-        
+
         y_t = self.likert_values[np.argmin(np.abs(self.likert_values - y_cont))]
         r_t = self.rng.uniform(0.5, 2.0) * (1.5 - abs(y_t))
         # Slightly higher noise due to inconsistency

@@ -1,22 +1,24 @@
 """FastAPI backend for adaptive MBTI quiz. Engine state kept server-side; posterior never exposed."""
 
 import os
+import random
 import uuid
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-
-from adaptive_quiz.core import AdaptiveEngine, SignConfidenceStopping, VarianceSelection
+from adaptive_quiz.core import AdaptiveEngine, VarianceSelection, VarianceThresholdStopping
 from adaptive_quiz.domains.mbti import mbti_from_posterior
 
 from backend.models import (
     AnswerRequest,
     AnswerResponse,
+    QuestionItem,
     ResultResponse,
     StartQuizRequest,
     StartQuizResponse,
@@ -39,7 +41,8 @@ app.add_middleware(
 )
 
 # Serve the frontend if the directory exists (optional — quiz works without it).
-_frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+# FRONTEND_DIR env var allows overriding the path (used by Vercel serverless handler).
+_frontend_dir = Path(os.environ.get("FRONTEND_DIR", str(Path(__file__).resolve().parent.parent / "frontend")))
 if _frontend_dir.is_dir():
     app.mount("/static", StaticFiles(directory=str(_frontend_dir)), name="static")
 
@@ -48,36 +51,74 @@ if _frontend_dir.is_dir():
         return FileResponse(str(_frontend_dir / "index.html"))
 
 
-def _session_payload(engine: Any, current_question_id: str, question_lookup: Dict[str, Any]) -> dict:
+def _engine_uncertainties(engine: Any) -> Dict[str, float]:
+    """Per-axis posterior std dev (sqrt of diagonal variances). Axis order: EI, NS, TF, JP."""
+    sigma = np.sqrt(np.diag(engine.get_state().Sigma))
+    return {"EI": float(sigma[0]), "NS": float(sigma[1]), "TF": float(sigma[2]), "JP": float(sigma[3])}
+
+
+def _get_question_batch(
+    engine: Any,
+    question_lookup: Dict[str, Any],
+    n: int,
+) -> List[QuestionItem]:
+    """
+    Return up to n next questions ranked by projected variance (w^T Σ w),
+    without modifying the engine state.
+    """
+    state = engine.get_state()
+    Sigma = state.Sigma
+    excluded_ids = set(state.asked_question_ids)
+    batch: List[QuestionItem] = []
+
+    for _ in range(n):
+        scores = {}
+        for qid, q in question_lookup.items():
+            if qid in excluded_ids:
+                continue
+            w = np.asarray(q["weights"])
+            scores[qid] = float(w @ Sigma @ w)
+        if not scores:
+            break
+        best_id = max(scores, key=scores.__getitem__)
+        batch.append(QuestionItem(question_id=best_id, prompt=question_lookup[best_id]["text"]))
+        excluded_ids.add(best_id)
+
+    return batch
+
+
+def _session_payload(engine: Any, question_lookup: Dict[str, Any], batch_size: int) -> dict:
     return {
         "engine": engine,
-        "current_question_id": current_question_id,
         "question_lookup": question_lookup,
+        "batch_size": batch_size,
     }
 
 
 @app.post("/start_quiz", response_model=StartQuizResponse)
 def start_quiz(body: StartQuizRequest) -> StartQuizResponse:
     schema = load_schema(body.schema_name)
-    question_lookup = {q["id"]: q for q in schema["questions"]}
+    questions = list(schema["questions"])
+    random.shuffle(questions)
+    schema = {**schema, "questions": questions}
+    question_lookup = {q["id"]: q for q in questions}
 
     engine = AdaptiveEngine(
         schema=schema,
         selection_strategy=VarianceSelection(),
-        stopping_rule=SignConfidenceStopping(confidence_threshold=0.95),
+        stopping_rule=VarianceThresholdStopping(variance_threshold=0.1),
     )
-    next_q = engine.get_next_question()
-    if next_q is None:
-        raise HTTPException(status_code=500, detail="No question available")
 
-    question_id, _ = next_q
     session_id = str(uuid.uuid4())
-    session_store.create(session_id, _session_payload(engine, question_id, question_lookup))
+    session_store.create(session_id, _session_payload(engine, question_lookup, body.batch_size))
+
+    next_questions = _get_question_batch(engine, question_lookup, body.batch_size)
+    if not next_questions:
+        raise HTTPException(status_code=500, detail="No questions available")
 
     return StartQuizResponse(
         session_id=session_id,
-        question_id=question_id,
-        prompt=question_lookup[question_id]["text"],
+        next_questions=next_questions,
         max_questions=len(schema["questions"]),
     )
 
@@ -88,32 +129,41 @@ def answer(body: AnswerRequest) -> AnswerResponse:
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    current_question_id = session.get("current_question_id")
-    if current_question_id is None:
-        # Quiz already complete — report current count.
-        engine = session["engine"]
-        return AnswerResponse(complete=True, questions_asked=engine.get_state()["num_questions"])
-
     engine = session["engine"]
-    engine.submit_answer(current_question_id, body.response, response_time=1.0)
-    questions_asked = engine.get_state()["num_questions"]
+    question_lookup = session["question_lookup"]
+    batch_size = session.get("batch_size", 5)
+
+    for ans in body.answers:
+        if engine.is_complete():
+            break
+        if ans.question_id not in question_lookup:
+            raise HTTPException(status_code=400, detail=f"Unknown question_id: {ans.question_id}")
+        engine.submit_answer(ans.question_id, ans.response, ans.response_time)
+        session_store.log_response(body.session_id, ans.question_id, ans.response, ans.response_time)
+
+    session_store.update(body.session_id, session)
+    questions_asked = engine.get_state().num_questions
+
+    uncertainties = _engine_uncertainties(engine)
 
     if engine.is_complete():
-        session["current_question_id"] = None
-        return AnswerResponse(complete=True, questions_asked=questions_asked)
+        state = engine.get_state()
+        scored = mbti_from_posterior(state.mu)
+        session_store.complete_session(body.session_id, scored.get("type", "UNKNOWN"), state.mu.tolist())
+        return AnswerResponse(next_questions=[], complete=True, questions_asked=questions_asked, uncertainties=uncertainties)
 
-    next_q = engine.get_next_question()
-    if next_q is None:
-        session["current_question_id"] = None
-        return AnswerResponse(complete=True, questions_asked=questions_asked)
+    next_questions = _get_question_batch(engine, question_lookup, batch_size)
+    complete = len(next_questions) == 0
+    if complete:
+        state = engine.get_state()
+        scored = mbti_from_posterior(state.mu)
+        session_store.complete_session(body.session_id, scored.get("type", "UNKNOWN"), state.mu.tolist())
 
-    question_id, _ = next_q
-    session["current_question_id"] = question_id
     return AnswerResponse(
-        question_id=question_id,
-        prompt=session["question_lookup"][question_id]["text"],
-        complete=False,
+        next_questions=next_questions,
+        complete=complete,
         questions_asked=questions_asked,
+        uncertainties=uncertainties,
     )
 
 
@@ -131,8 +181,6 @@ def result(session_id: str) -> ResultResponse:
     scored = mbti_from_posterior(state.mu)
     axes = scored.get("axes", {})
 
-    # Convention: first letter of each key = positive-mu letter.
-    # E-I: positive → E  |  N-S: positive → N  |  T-F: positive → T  |  J-P: positive → J
     dimensions = {
         "E-I": axes.get("EI", 0.0),
         "N-S": axes.get("NS", 0.0),
@@ -140,11 +188,17 @@ def result(session_id: str) -> ResultResponse:
         "J-P": axes.get("JP", 0.0),
     }
 
-    # Sessions are in-memory only; we intentionally keep the session alive so
-    # /result can be called multiple times (e.g. on page refresh) without a 404.
-    # Sessions are automatically cleared on server restart.
+    sigma = np.sqrt(np.diag(state["Sigma"]))
+    uncertainties = {
+        "E-I": float(sigma[0]),
+        "N-S": float(sigma[1]),
+        "T-F": float(sigma[2]),
+        "J-P": float(sigma[3]),
+    }
+
     return ResultResponse(
         type=scored.get("type", "UNKNOWN"),
         dimensions=dimensions,
+        uncertainties=uncertainties,
         questions_asked=state["num_questions"],
     )

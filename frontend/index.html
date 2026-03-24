@@ -78,29 +78,40 @@
     }
     .btn-secondary:hover { background: #f0f0ff; }
 
-    /* ── Progress ────────────────────────────────────── */
+    /* ── Progress / Confidence ───────────────────────── */
     .progress-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.6rem;
       font-size: 0.85rem;
       color: #888;
     }
-    .progress-bar {
+    .confidence-label {
+      font-size: 0.75rem;
+      color: #bbb;
+      font-style: italic;
+    }
+    .confidence-track {
       height: 6px;
       background: #e8eaf0;
       border-radius: 99px;
       margin-bottom: 2rem;
       overflow: hidden;
     }
-    .progress-fill {
+    .confidence-fill {
       height: 100%;
       background: #4f46e5;
       border-radius: 99px;
-      transition: width 0.4s ease;
       width: 0%;
+      transition: width 0.5s ease;
     }
+    @keyframes conf-pulse {
+      0%   { opacity: 1; }
+      40%  { opacity: 0.55; }
+      100% { opacity: 1; }
+    }
+    .confidence-fill.pulse { animation: conf-pulse 0.35s ease; }
 
     /* ── Question ────────────────────────────────────── */
     .question-label {
@@ -280,33 +291,35 @@
   <div id="screen-question" class="screen">
     <div class="progress-header">
       <span id="q-label">Question 1</span>
-      <span id="q-pool">of up to <strong id="q-max">30</strong></span>
+      <span class="confidence-label">certainty</span>
     </div>
-    <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+    <div class="confidence-track">
+      <div class="confidence-fill" id="confidence-fill"></div>
+    </div>
 
     <div class="question-label">How well does this describe you?</div>
     <p id="question-text" class="question-text"></p>
 
     <div class="likert-grid" id="likert-grid">
       <button class="likert-btn" data-value="-1">
-        <span class="dot"></span>Strongly<br>Disagree
+        <span class="dot"></span>Very<br>Inaccurate
       </button>
       <button class="likert-btn" data-value="-0.5">
-        <span class="dot"></span>Disagree
+        <span class="dot"></span>Moderately<br>Inaccurate
       </button>
       <button class="likert-btn" data-value="0">
-        <span class="dot"></span>Neutral
+        <span class="dot"></span>Neither
       </button>
       <button class="likert-btn" data-value="0.5">
-        <span class="dot"></span>Agree
+        <span class="dot"></span>Moderately<br>Accurate
       </button>
       <button class="likert-btn" data-value="1">
-        <span class="dot"></span>Strongly<br>Agree
+        <span class="dot"></span>Very<br>Accurate
       </button>
     </div>
     <div class="likert-poles">
-      <span>Strongly disagree</span>
-      <span>Strongly agree</span>
+      <span>Very inaccurate</span>
+      <span>Very accurate</span>
     </div>
     <div id="question-error" class="error-msg"></div>
   </div>
@@ -357,11 +370,19 @@
     { key: 'J-P', left: 'P',  right: 'J',  label: 'Lifestyle'   },
   ];
 
+  const BATCH_SIZE    = 3;
+  const SIGMA_INITIAL = 1.0;  // identity prior std dev
+
   // ── State ────────────────────────────────────────────
-  let sessionId     = null;
-  let questionsAsked = 0;
-  let maxQuestions  = 30;
-  let busy          = false;
+  let sessionId        = null;
+  let questionsAsked   = 0;
+  let maxQuestions     = 80;
+  let busy             = false;
+  let questionShownAt  = null;  // timestamp (ms) when current question was rendered
+
+  // Batching state
+  let questionBuffer   = [];   // pre-fetched questions not yet shown
+  let pendingAnswers   = [];   // answers collected locally, not yet POSTed
 
   // ── Screens ──────────────────────────────────────────
   function showScreen(id) {
@@ -410,12 +431,13 @@
     document.getElementById('btn-start').innerHTML = '<span class="spinner"></span>Starting…';
 
     try {
-      const data = await apiPost('/start_quiz', { schema_name: 'mbti' });
+      const data = await apiPost('/start_quiz', { schema_name: 'mbti', batch_size: BATCH_SIZE });
       sessionId      = data.session_id;
-      maxQuestions   = data.max_questions || 30;
+      maxQuestions   = data.max_questions || 80;
       questionsAsked = 0;
-      document.getElementById('q-max').textContent = maxQuestions;
-      renderQuestion(data.question_id, data.prompt, 0);
+      questionBuffer = data.next_questions.slice();
+      pendingAnswers = [];
+      showNextFromBuffer();
       showScreen('screen-question');
     } catch (e) {
       showError('welcome-error', 'Could not start quiz: ' + e.message);
@@ -426,26 +448,49 @@
     }
   }
 
+  function showNextFromBuffer() {
+    const q = questionBuffer.shift();
+    renderQuestion(q.question_id, q.prompt, questionsAsked);
+  }
+
   async function submitAnswer(value) {
     if (busy) return;
-    busy = true;
-    lockLikert(true);
-    hideError('question-error');
 
-    try {
-      const data = await apiPost('/answer', { session_id: sessionId, response: value });
-      questionsAsked = data.questions_asked || questionsAsked + 1;
+    const responseTime = questionShownAt ? (Date.now() - questionShownAt) / 1000 : 1.0;
+    questionShownAt = null;
 
-      if (data.complete) {
-        await loadResult();
-      } else {
-        renderQuestion(data.question_id, data.prompt, questionsAsked);
+    // Record the current question id before shifting
+    const currentQuestionId = document.getElementById('question-text').dataset.questionId;
+    pendingAnswers.push({ question_id: currentQuestionId, response: value, response_time: responseTime });
+    questionsAsked += 1;
+
+    if (questionBuffer.length > 0) {
+      // Show next question immediately — no server round-trip needed yet
+      nudgeConfidence();
+      showNextFromBuffer();
+    } else {
+      // Buffer empty: flush pending answers and fetch next batch
+      busy = true;
+      lockLikert(true);
+      hideError('question-error');
+      try {
+        const data = await apiPost('/answer', { session_id: sessionId, answers: pendingAnswers });
+        pendingAnswers = [];
+        questionsAsked = data.questions_asked || questionsAsked;
+
+        confirmConfidence(data.uncertainties);
+        if (data.complete) {
+          await loadResult();
+        } else {
+          questionBuffer = data.next_questions.slice();
+          showNextFromBuffer();
+        }
+      } catch (e) {
+        showError('question-error', 'Error: ' + e.message);
+        lockLikert(false);
+      } finally {
+        busy = false;
       }
-    } catch (e) {
-      showError('question-error', 'Error: ' + e.message);
-      lockLikert(false);
-    } finally {
-      busy = false;
     }
   }
 
@@ -460,15 +505,55 @@
     }
   }
 
+  // ── Confidence bar ───────────────────────────────────
+  const SIGMA_STOP = Math.sqrt(0.1);   // VarianceThresholdStopping(0.1) → σ ≈ 0.316
+  const U_DIMS     = ['EI', 'NS', 'TF', 'JP'];
+  let   confirmedConfidence = 0;       // last real value from server
+
+  function _sigmasToConfidence(uncertainties) {
+    const vals = U_DIMS.map(d => uncertainties[d] ?? SIGMA_INITIAL);
+    const avg  = vals.reduce((s, σ) => s + (SIGMA_INITIAL - σ) / (SIGMA_INITIAL - SIGMA_STOP), 0) / vals.length;
+    return Math.max(0, Math.min(100, avg * 100));
+  }
+
+  function _setConfidenceFill(pct, pulse = false) {
+    const fill = document.getElementById('confidence-fill');
+    if (!fill) return;
+    fill.style.width = pct + '%';
+    if (pulse) {
+      fill.classList.remove('pulse');
+      void fill.offsetWidth;  // force reflow to restart animation
+      fill.classList.add('pulse');
+    }
+  }
+
+  function nudgeConfidence() {
+    // Optimistic per-answer bump so the bar moves on every answer, not just batch flush.
+    // Capped well below 100 so real server values (which are always >= confirmed) snap cleanly.
+    const nudged = Math.min(confirmedConfidence + 3, 88);
+    _setConfidenceFill(nudged, true);
+  }
+
+  function confirmConfidence(uncertainties) {
+    if (!uncertainties || !uncertainties.EI) return;
+    confirmedConfidence = _sigmasToConfidence(uncertainties);
+    _setConfidenceFill(confirmedConfidence);
+  }
+
+  function resetConfidence() {
+    confirmedConfidence = 0;
+    _setConfidenceFill(0);
+  }
+
   // ── Rendering ────────────────────────────────────────
   function renderQuestion(questionId, prompt, asked) {
-    document.getElementById('question-text').textContent = prompt;
+    const el = document.getElementById('question-text');
+    el.textContent = prompt;
+    el.dataset.questionId = questionId;
     document.getElementById('q-label').textContent = 'Question ' + (asked + 1);
-    const pct = Math.min(100, (asked / maxQuestions) * 100);
-    document.getElementById('progress-fill').style.width = pct + '%';
-    // Reset Likert selection
     document.querySelectorAll('.likert-btn').forEach(b => b.classList.remove('selected'));
     lockLikert(false);
+    questionShownAt = Date.now();
   }
 
   function renderResult(data) {
@@ -519,6 +604,7 @@
     if (!btn || btn.disabled) return;
     document.querySelectorAll('.likert-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
+    lockLikert(true);  // prevent double-click during visual feedback delay
     const value = parseFloat(btn.dataset.value);
     setTimeout(() => submitAnswer(value), 180);  // brief visual feedback before submitting
   });
@@ -526,6 +612,9 @@
   document.getElementById('btn-restart').addEventListener('click', () => {
     sessionId      = null;
     questionsAsked = 0;
+    questionBuffer = [];
+    pendingAnswers = [];
+    resetConfidence();
     document.getElementById('btn-start').disabled = false;
     document.getElementById('btn-start').textContent = 'Start Quiz';
     hideError('welcome-error');
