@@ -4,6 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Adaptive MBTI Quiz</title>
+
+  <!-- SEO -->
+  <meta name="description" content="Adaptive MBTI personality quiz powered by Bayesian inference. Finds your Myers-Briggs type in ~40 questions — half the questions of a standard test." />
+  <meta name="author" content="David Goh" />
+  <link rel="canonical" href="https://adaptive-quiz-personality.vercel.app" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Adaptive MBTI Quiz" />
+  <meta property="og:description" content="Bayesian inference engine that finds your MBTI type in ~40 questions — half the questions of a standard test." />
+  <meta property="og:url" content="https://adaptive-quiz-personality.vercel.app" />
+  <meta property="og:site_name" content="Adaptive MBTI Quiz" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Adaptive MBTI Quiz" />
+  <meta name="twitter:description" content="Bayesian inference engine that finds your MBTI type in ~40 questions — half the questions of a standard test." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -266,6 +283,20 @@
       .likert-btn { font-size: 0.65rem; padding: 0.6rem 0.1rem; }
       .question-text { font-size: 1.1rem; }
     }
+
+    /* ── Footer ──────────────────────────────────────── */
+    .app-footer {
+      margin-top: 1.25rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: #aaa;
+    }
+    .app-footer a {
+      color: #aaa;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .app-footer a:hover { color: #4f46e5; }
   </style>
 </head>
 <body>
@@ -338,6 +369,12 @@
   </div>
 
 </div>
+
+<footer class="app-footer">
+  <a href="https://github.com/davidcagoh/adaptive-quiz-personality" target="_blank" rel="noopener noreferrer">
+    David Goh · GitHub
+  </a>
+</footer>
 
 <script>
   const API = '';  // same origin; change to 'http://localhost:8000' if opening file directly

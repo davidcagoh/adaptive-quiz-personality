@@ -1,6 +1,8 @@
 # Adaptive Bayesian MBTI Quiz — Technical Report
 
-**Live demo:** [adaptive-quiz-personality.vercel.app](https://adaptive-quiz-personality.vercel.app)
+**Author:** [David Goh](https://github.com/davidcagoh) · **Repo:** [davidcagoh/adaptive-quiz-personality](https://github.com/davidcagoh/adaptive-quiz-personality) · **Live demo:** [adaptive-quiz-personality.vercel.app](https://adaptive-quiz-personality.vercel.app)
+
+*For quick start, running locally, and architecture overview see [README.md](README.md).*
 
 ## Overview
 
@@ -181,3 +183,7 @@ A "certainty bar" in the UI is updated optimistically (+3% per local answer, cap
 - Goldberg, L. R. (1999). A broad-bandwidth, public-domain, personality inventory measuring the lower-level facets of several five-factor models. *Personality Psychology in Europe*, 7, 7–28. Item bank: https://ipip.ori.org
 - Murphy, K. P. (2012). *Machine Learning: A Probabilistic Perspective*, ch. 7 (Gaussian conjugate models).
 - van der Linden, W. J., & Glas, C. A. W. (Eds.) (2010). *Elements of Adaptive Testing*. Springer.
+
+---
+
+*[David Goh](https://github.com/davidcagoh) · [GitHub repo](https://github.com/davidcagoh/adaptive-quiz-personality) · [Live demo](https://adaptive-quiz-personality.vercel.app)*

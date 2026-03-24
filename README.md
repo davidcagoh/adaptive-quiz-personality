@@ -2,7 +2,7 @@
 
 An adaptive personality quiz engine that uses Bayesian inference to converge on a Myers-Briggs type in roughly half the questions a standard fixed-length test requires.
 
-**[Try it live →](https://adaptive-quiz-personality.vercel.app)**
+**[Try it live →](https://adaptive-quiz-personality.vercel.app)** · [GitHub](https://github.com/davidcagoh/adaptive-quiz-personality) · By [David Goh](https://github.com/davidcagoh)
 
 ---
 
@@ -86,4 +86,8 @@ The engine is domain-agnostic — adding a new personality framework requires on
 
 ## License
 
-MIT.
+MIT. Question bank items from [IPIP-NEO](https://ipip.ori.org) (Goldberg 1999), public domain.
+
+---
+
+*By [David Goh](https://github.com/davidcagoh) · [adaptive-quiz-personality](https://github.com/davidcagoh/adaptive-quiz-personality)*
